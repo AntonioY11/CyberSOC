@@ -1,7 +1,7 @@
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
-from soc.views import IncidentLogViewSet, IncidentViewSet, SystemViewSet, ThreatActorViewSet, UserViewSet
+from soc.views import IncidentLogViewSet, IncidentViewSet, LoginView, SystemViewSet, ThreatActorViewSet, UserViewSet
 
 router = DefaultRouter()
 router.register("users", UserViewSet, basename="user")
@@ -11,5 +11,6 @@ router.register("incidents", IncidentViewSet, basename="incident")
 router.register("incident-logs", IncidentLogViewSet, basename="incident-log")
 
 urlpatterns = [
+    path("auth/login/", LoginView.as_view(), name="auth-login"),
     path("", include(router.urls)),
 ]
