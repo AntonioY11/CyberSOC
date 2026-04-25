@@ -4,7 +4,6 @@ import { BackendSystemAsset } from '../models/backend.models';
 import { SystemAsset } from '../models/soc.models';
 import { CyberService } from './cyber.service';
 import { mapSystem } from './mappers';
-import { mockSystems } from './mock-data';
 
 @Injectable({ providedIn: 'root' })
 export class SystemService {
@@ -16,7 +15,7 @@ export class SystemService {
   loadSystems(): Observable<SystemAsset[]> {
     return this.cyber.get<BackendSystemAsset[]>('/systems/').pipe(
       map((systems) => systems.map(mapSystem)),
-      catchError(() => of(mockSystems)),
+      catchError(() => of([])),
       tap((systems) => this.systemsSubject.next(systems))
     );
   }

@@ -2,6 +2,7 @@ from pathlib import Path
 import os
 from datetime import timedelta
 
+from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -59,24 +60,18 @@ ASGI_APPLICATION = "cybersoc.asgi.application"
 MONGODB_URI = os.getenv("MONGODB_URI", "").strip()
 MONGODB_NAME = os.getenv("MONGODB_NAME", "cybersoc")
 
-if MONGODB_URI:
-    DATABASES = {
-        "default": {
-            "ENGINE": "djongo",
-            "NAME": MONGODB_NAME,
-            "CLIENT": {
-                "host": MONGODB_URI,
-            },
-        }
+if not MONGODB_URI:
+    raise ImproperlyConfigured("MONGODB_URI is required. CyberSOC must run against MongoDB Atlas.")
+
+DATABASES = {
+    "default": {
+        "ENGINE": "djongo",
+        "NAME": MONGODB_NAME,
+        "CLIENT": {
+            "host": MONGODB_URI,
+        },
     }
-else:
-    # Fallback for local development when Atlas URI is not yet provided.
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.sqlite3",
-            "NAME": BASE_DIR / "db.sqlite3",
-        }
-    }
+}
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},

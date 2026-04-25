@@ -1,8 +1,9 @@
 import { Injectable } from '@angular/core';
-import { BehaviorSubject, Observable, catchError, of, tap } from 'rxjs';
+import { BehaviorSubject, Observable, catchError, map, of, tap } from 'rxjs';
+import { BackendIncidentLog } from '../models/backend.models';
 import { AuditLogEntry } from '../models/soc.models';
 import { CyberService } from './cyber.service';
-import { mockAuditLogs } from './mock-data';
+import { mapAuditLog } from './mappers';
 
 @Injectable({ providedIn: 'root' })
 export class AuditService {
@@ -12,8 +13,9 @@ export class AuditService {
   constructor(private readonly cyber: CyberService) {}
 
   loadAuditLogs(): Observable<AuditLogEntry[]> {
-    return this.cyber.get<AuditLogEntry[]>('/audit-logs/').pipe(
-      catchError(() => of(mockAuditLogs)),
+    return this.cyber.get<BackendIncidentLog[]>('/incident-logs/').pipe(
+      map((logs) => logs.map(mapAuditLog)),
+      catchError(() => of([])),
       tap((logs) => this.auditLogsSubject.next(logs))
     );
   }

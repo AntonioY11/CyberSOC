@@ -4,7 +4,6 @@ import { BackendThreatActor } from '../models/backend.models';
 import { ThreatActor } from '../models/soc.models';
 import { CyberService } from './cyber.service';
 import { mapThreatActor } from './mappers';
-import { mockThreatActors } from './mock-data';
 
 @Injectable({ providedIn: 'root' })
 export class ThreatActorService {
@@ -16,7 +15,7 @@ export class ThreatActorService {
   loadActors(): Observable<ThreatActor[]> {
     return this.cyber.get<BackendThreatActor[]>('/threat-actors/').pipe(
       map((actors) => actors.map(mapThreatActor)),
-      catchError(() => of(mockThreatActors)),
+      catchError(() => of([])),
       tap((actors) => this.actorsSubject.next(actors))
     );
   }

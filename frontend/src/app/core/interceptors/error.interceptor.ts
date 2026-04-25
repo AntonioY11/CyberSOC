@@ -13,12 +13,20 @@ export const errorInterceptor: HttpInterceptorFn = (request, next) => {
   return next(request).pipe(
     catchError((error: unknown) => {
       if (error instanceof HttpErrorResponse) {
-        if (error.status === 401) {
+        const isLoginRequest = request.url.includes('/auth/login/');
+
+        if (isLoginRequest) {
+          return throwError(() => error);
+        }
+
+        if (error.status === 0) {
+          notifications.notify('The SOC API is unavailable. Please try again when the backend is online.');
+        } else if (error.status === 401) {
           authService.logout();
           notifications.notify('Your SOC session expired. Please sign in again.');
           void router.navigate(['/login']);
         } else if (error.status >= 500) {
-          notifications.notify('The SOC API is temporarily unavailable. Demo data remains active.');
+          notifications.notify('The SOC API is temporarily unavailable. Please try again shortly.');
         } else if (error.status !== 0) {
           notifications.notify(error.error?.detail ?? 'The request could not be completed.');
         }

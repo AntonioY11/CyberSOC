@@ -8,6 +8,7 @@ import {
 } from '../models/backend.models';
 import {
   AuthSession,
+  AuditLogEntry,
   Incident,
   IncidentLog,
   SocUser,
@@ -52,6 +53,17 @@ export function mapIncidentLog(log: BackendIncidentLog): IncidentLog {
     actorName: log.actor_name ?? log.actorName ?? log.performed_by ?? 'SOC Automation',
     action: log.action,
     notes: log.notes ?? log.message ?? ''
+  };
+}
+
+export function mapAuditLog(log: BackendIncidentLog): AuditLogEntry {
+  return {
+    id: String(log.id),
+    timestamp: log.timestamp,
+    actorName: log.actor_name ?? log.actorName ?? log.performed_by ?? 'SOC Automation',
+    event: log.action,
+    target: `Incident ${log.incident}`,
+    level: 'info'
   };
 }
 

@@ -34,6 +34,6 @@ export class IncidentQueueComponent implements OnInit {
       return;
     }
 
-    this.incidentService.claimIncident(incident.id, user).subscribe();
+    this.incidentService.claimIncident(incident.id).subscribe();
   }
 }

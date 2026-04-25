@@ -37,7 +37,9 @@
         {{ loading ? 'Authenticating...' : 'Enter SOC' }}
       </button>
 
-      <p class="hint">Atlas users include <strong>admin@cybersoc.local</strong>, <strong>analyst1@cybersoc.local</strong>, and <strong>analyst2@cybersoc.local</strong>.</p>
+      @if (errorMessage) {
+        <p class="hint error">{{ errorMessage }}</p>
+      }
     </form>
   </section>
 </main>

@@ -32,6 +32,7 @@ export interface BackendThreatActor {
 
 export interface BackendIncidentLog {
   id: number | string;
+  incident: number | string;
   timestamp: string;
   actor_name?: string;
   actorName?: string;
