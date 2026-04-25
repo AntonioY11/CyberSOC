@@ -1,0 +1,128 @@
+@if (incident$ | async; as incident) {
+  <section class="page-header compact">
+    <div>
+      <span class="eyebrow">Evidence Locker</span>
+      <h1>{{ incident.title }}</h1>
+      <p>{{ incident.description }}</p>
+    </div>
+    <a class="button ghost" routerLink="/incidents">Back to Queue</a>
+  </section>
+
+  <section class="detail-grid">
+    <article class="panel metadata-card">
+      <div class="panel-title">
+        <div>
+          <h2>Incident metadata</h2>
+          <p>Case relationships and forensic state.</p>
+        </div>
+        <span class="severity-pill" [ngClass]="incident.severity.toLowerCase()">{{ incident.severity }}</span>
+      </div>
+
+      <dl class="metadata-list">
+        <div>
+          <dt>Status</dt>
+          <dd>{{ incident.status }}</dd>
+        </div>
+        <div>
+          <dt>Discovery Date</dt>
+          <dd>{{ incident.discoveryDate | date:'fullDate' }}</dd>
+        </div>
+        <div>
+          <dt>True Positive</dt>
+          <dd>{{ incident.isTruePositive ? 'Confirmed' : 'Pending validation' }}</dd>
+        </div>
+        <div>
+          <dt>Assigned Analyst</dt>
+          <dd>{{ incident.assignedTo?.name ?? 'Unassigned' }}</dd>
+        </div>
+        <div>
+          <dt>Affected System</dt>
+          <dd>
+            {{ incident.system.name }}
+            <span class="mono">{{ incident.system.ipAddress }}</span>
+          </dd>
+        </div>
+        <div>
+          <dt>Criticality</dt>
+          <dd>{{ incident.system.criticality }}/5</dd>
+        </div>
+      </dl>
+    </article>
+
+    <article class="panel evidence-card">
+      <div class="panel-title">
+        <div>
+          <h2>Evidence gallery</h2>
+          <p>Image evidence and forensic PDF report.</p>
+        </div>
+      </div>
+
+      @if (incident.evidenceImage) {
+        <img class="evidence-image" [src]="incident.evidenceImage" [alt]="'Evidence image for ' + incident.title">
+      } @else {
+        <div class="empty-preview">No image evidence uploaded.</div>
+      }
+
+      @if (incident.forensicReport) {
+        <a class="button primary" [href]="incident.forensicReport" download>Download PDF</a>
+      } @else {
+        <button class="button primary" type="button" disabled>PDF unavailable</button>
+      }
+    </article>
+  </section>
+
+  <section class="detail-grid">
+    <article class="panel">
+      <div class="panel-title">
+        <div>
+          <h2>Threat intelligence</h2>
+          <p>Many-to-many actor attribution linked to this incident.</p>
+        </div>
+      </div>
+      <div class="chip-row">
+        @for (actor of incident.actors; track actor.id) {
+          <span class="actor-chip" [ngClass]="actor.threatLevel.toLowerCase()">
+            {{ actor.name }} | {{ actor.originCountry }} | {{ actor.threatLevel }}
+          </span>
+        } @empty {
+          <span class="actor-chip">No linked threat actors</span>
+        }
+      </div>
+    </article>
+
+    <article class="panel">
+      <div class="panel-title">
+        <div>
+          <h2>Investigation timeline</h2>
+          <p>Django signal and analyst audit trail.</p>
+        </div>
+      </div>
+      <ol class="timeline">
+        @for (log of sortedLogs(incident.logs); track log.id) {
+          <li>
+            <span class="timeline-dot"></span>
+            <div>
+              <strong>{{ log.action }}</strong>
+              <small class="mono">{{ log.timestamp | date:'medium' }} | {{ log.actorName }}</small>
+              <p>{{ log.notes }}</p>
+            </div>
+          </li>
+        } @empty {
+          <li>
+            <span class="timeline-dot"></span>
+            <div>
+              <strong>No timeline events</strong>
+              <p>This case does not have audit logs yet.</p>
+            </div>
+          </li>
+        }
+      </ol>
+    </article>
+  </section>
+} @else {
+  <section class="panel empty-state">
+    <h1>Incident not found</h1>
+    <p>The case file is unavailable or still loading.</p>
+    <a class="button primary" routerLink="/incidents">Return to Queue</a>
+  </section>
+}

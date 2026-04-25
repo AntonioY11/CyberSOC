@@ -1,0 +1,108 @@
+<section class="page-header compact">
+  <div>
+    <span class="eyebrow">Incident Reporting</span>
+    <h1>Create case file</h1>
+    <p>Submit a new forensic incident with evidence files and threat actor attribution.</p>
+  </div>
+</section>
+
+<form class="form-grid" [formGroup]="form" (ngSubmit)="submit()">
+  <section class="panel form-panel">
+    <div class="panel-title">
+      <div>
+        <h2>Case metadata</h2>
+        <p>Core Incident model fields and relationships.</p>
+      </div>
+    </div>
+
+    <label class="field">
+      <span>Title</span>
+      <input type="text" formControlName="title" placeholder="Credential replay against identity gateway">
+      @if (form.controls.title.touched && form.controls.title.invalid) {
+        <small>Title is required and must be descriptive.</small>
+      }
+    </label>
+
+    <label class="field">
+      <span>Description</span>
+      <textarea rows="6" formControlName="description" placeholder="Summarize discovery context, impact, and first observations."></textarea>
+      @if (form.controls.description.touched && form.controls.description.invalid) {
+        <small>Description must be at least 20 characters.</small>
+      }
+    </label>
+
+    <div class="field-row">
+      <label class="field">
+        <span>System</span>
+        <select formControlName="systemId">
+          <option value="" disabled>Select asset</option>
+          @if (systems$ | async; as systems) {
+            @for (system of systems; track system.id) {
+              <option [value]="system.id">{{ system.name }} | {{ system.type }}</option>
+            }
+          }
+        </select>
+      </label>
+
+      <label class="field">
+        <span>Severity</span>
+        <select formControlName="severity">
+          @for (severity of severities; track severity) {
+            <option [value]="severity">{{ severity }}</option>
+          }
+        </select>
+      </label>
+    </div>
+
+    <label class="field">
+      <span>Threat actors</span>
+      <select multiple formControlName="actorIds" size="4">
+        @if (actors$ | async; as actors) {
+          @for (actor of actors; track actor.id) {
+            <option [value]="actor.id">{{ actor.name }} | {{ actor.threatLevel }}</option>
+          }
+        }
+      </select>
+      <small>Hold Ctrl or Cmd to link multiple actors.</small>
+    </label>
+  </section>
+
+  <section class="panel form-panel">
+    <div class="panel-title">
+      <div>
+        <h2>Evidence uploads</h2>
+        <p>Image evidence and required PDF forensic report.</p>
+      </div>
+    </div>
+
+    <label class="drop-zone" [ngClass]="{ ready: imageProgress === 100 }">
+      <input type="file" accept="image/*" (change)="onFileSelected($event, 'evidenceImage')">
+      <strong>Evidence image</strong>
+      <span>PNG, JPG, or WEBP up to 8 MB</span>
+      <progress max="100" [value]="imageProgress"></progress>
+      @if (form.controls.evidenceImage.hasError('fileSize')) {
+        <small>Image must be under 8 MB.</small>
+      }
+    </label>
+
+    <label class="drop-zone" [ngClass]="{ ready: reportProgress === 100 }">
+      <input type="file" accept="application/pdf" (change)="onFileSelected($event, 'forensicReport')">
+      <strong>Forensic report PDF</strong>
+      <span>Required PDF report up to 8 MB</span>
+      <progress max="100" [value]="reportProgress"></progress>
+      @if (form.controls.forensicReport.touched && form.controls.forensicReport.hasError('required')) {
+        <small>PDF report is required.</small>
+      }
+      @if (form.controls.forensicReport.hasError('pdf')) {
+        <small>Report must be a PDF file.</small>
+      }
+      @if (form.controls.forensicReport.hasError('fileSize')) {
+        <small>Report must be under 8 MB.</small>
+      }
+    </label>
+
+    <button class="button primary wide" type="submit" [disabled]="submitting">
+      {{ submitting ? 'Submitting...' : 'Submit Incident' }}
+    </button>
+  </section>
+</form>

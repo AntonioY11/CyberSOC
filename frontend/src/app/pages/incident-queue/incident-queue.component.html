@@ -1,0 +1,56 @@
+<section class="page-header compact">
+  <div>
+    <span class="eyebrow">Case Intake</span>
+    <h1>{{ route.snapshot.data['mineOnly'] ? 'My assigned cases' : 'Incident queue' }}</h1>
+    <p>Claim unassigned tickets, inspect affected systems, and open evidence lockers.</p>
+  </div>
+  <a class="button primary" routerLink="/incidents/new">New Incident</a>
+</section>
+
+<section class="panel table-panel">
+  @if (incidents$ | async; as incidents) {
+    <div class="responsive-table">
+      <table>
+        <thead>
+          <tr>
+            <th>Case</th>
+            <th>System</th>
+            <th>Severity</th>
+            <th>Status</th>
+            <th>Assigned To</th>
+            <th>Discovery</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (incident of incidents; track incident.id) {
+            <tr>
+              <td>
+                <a class="case-link" [routerLink]="['/incidents', incident.id]">{{ incident.title }}</a>
+                <span>{{ incident.id }}</span>
+              </td>
+              <td>
+                <strong>{{ incident.system.name }}</strong>
+                <span class="mono">{{ incident.system.ipAddress }}</span>
+              </td>
+              <td><span class="severity-pill" [ngClass]="incident.severity.toLowerCase()">{{ incident.severity }}</span></td>
+              <td>{{ incident.status }}</td>
+              <td>{{ incident.assignedTo?.name ?? 'Unassigned' }}</td>
+              <td>{{ incident.discoveryDate | date:'mediumDate' }}</td>
+              <td class="actions-cell">
+                @if (!incident.assignedTo && (user$ | async)?.role === 'ANALYST') {
+                  <button class="button small" type="button" (click)="claim(incident)">Claim Ticket</button>
+                }
+                <a class="button ghost small" [routerLink]="['/incidents', incident.id]">Open</a>
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="7" class="empty-state">No incidents in this queue.</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</section>

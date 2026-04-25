@@ -1,0 +1,105 @@
+<section class="page-header compact">
+  <div>
+    <span class="eyebrow">Admin Control Plane</span>
+    <h1>Governance console</h1>
+    <p>Restricted system, user, and global audit administration.</p>
+  </div>
+</section>
+
+<nav class="tab-row">
+  <a routerLink="/admin/systems" routerLinkActive="active">Systems</a>
+  <a routerLink="/admin/users" routerLinkActive="active">Users</a>
+  <a routerLink="/admin/audit" routerLinkActive="active">Audit Logs</a>
+</nav>
+
+@if (route.snapshot.data['panel'] === 'systems') {
+  <section class="panel table-panel">
+    <div class="panel-title">
+      <h2>System Management</h2>
+      <button class="button small">Add Asset</button>
+    </div>
+    <div class="responsive-table">
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Type</th>
+            <th>IP Address</th>
+            <th>Criticality</th>
+            <th>Description</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @if (systems$ | async; as systems) {
+            @for (system of systems; track system.id) {
+              <tr>
+                <td>{{ system.name }}</td>
+                <td>{{ system.type }}</td>
+                <td class="mono">{{ system.ipAddress }}</td>
+                <td>{{ system.criticality }}/5</td>
+                <td>{{ system.description }}</td>
+                <td><button class="button danger small">Delete</button></td>
+              </tr>
+            }
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+}
+
+@if (route.snapshot.data['panel'] === 'users') {
+  <section class="panel table-panel">
+    <div class="panel-title">
+      <h2>User Management</h2>
+      <button class="button small">Invite User</button>
+    </div>
+    <div class="responsive-table">
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Role</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @if (users$ | async; as users) {
+            @for (user of users; track user.id) {
+              <tr>
+                <td>{{ user.name }}</td>
+                <td>{{ user.email }}</td>
+                <td><span class="actor-chip">{{ user.role }}</span></td>
+                <td><button class="button danger small">Delete</button></td>
+              </tr>
+            }
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+}
+
+@if (route.snapshot.data['panel'] === 'audit') {
+  <section class="panel">
+    <div class="panel-title">
+      <h2>Global Audit Logs</h2>
+      <p>Platform-level operational history.</p>
+    </div>
+    <ol class="timeline">
+      @if (logs$ | async; as logs) {
+        @for (log of logs; track log.id) {
+          <li>
+            <span class="timeline-dot" [ngClass]="log.level"></span>
+            <div>
+              <strong>{{ log.event }}</strong>
+              <small class="mono">{{ log.timestamp | date:'medium' }} | {{ log.actorName }} | {{ log.target }}</small>
+            </div>
+          </li>
+        }
+      }
+    </ol>
+  </section>
+}

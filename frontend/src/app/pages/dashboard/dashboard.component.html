@@ -1,0 +1,71 @@
+@if (vm$ | async; as vm) {
+  <section class="page-header">
+    <div>
+      <span class="eyebrow">Operations Overview</span>
+      <h1>Security command dashboard</h1>
+      <p>Live incident posture across assets, assignments, and attribution signals.</p>
+    </div>
+  </section>
+
+  <section class="kpi-grid">
+    <article class="kpi-card">
+      <small>Total Active Incidents</small>
+      <strong>{{ vm.totalActive }}</strong>
+      <span>Open investigation workload</span>
+    </article>
+    <article class="kpi-card high">
+      <small>High Severity Alerts</small>
+      <strong>{{ vm.highSeverity }}</strong>
+      <span>High or Critical cases</span>
+    </article>
+    <article class="kpi-card warning">
+      <small>Unassigned Tickets</small>
+      <strong>{{ vm.unassigned }}</strong>
+      <span>Waiting for analyst ownership</span>
+    </article>
+    <article class="kpi-card success">
+      <small>True Positive Rate</small>
+      <strong>{{ vm.truePositiveRate | percent:'1.0-0' }}</strong>
+      <span>Confirmed detection quality</span>
+    </article>
+  </section>
+
+  <section class="panel">
+    <div class="panel-title">
+      <div>
+        <h2>Reactive incident filter</h2>
+        <p>RxJS combineLatest updates this table as filters change.</p>
+      </div>
+    </div>
+
+    <div class="filter-row">
+      <div class="segmented">
+        @for (status of statuses; track status) {
+          <button type="button" [class.active]="(statusFilter$ | async) === status" (click)="setStatusFilter(status)">
+            {{ status }}
+          </button>
+        }
+      </div>
+      <div class="segmented">
+        @for (severity of severities; track severity) {
+          <button type="button" [class.active]="(severityFilter$ | async) === severity" (click)="setSeverityFilter(severity)">
+            {{ severity }}
+          </button>
+        }
+      </div>
+    </div>
+
+    <div class="incident-strip">
+      @for (incident of vm.filteredIncidents; track incident.id) {
+        <article class="incident-card">
+          <span class="severity-pill" [ngClass]="incident.severity.toLowerCase()">{{ incident.severity }}</span>
+          <h3>{{ incident.title }}</h3>
+          <p>{{ incident.system.name }} | <span class="mono">{{ incident.system.ipAddress }}</span></p>
+          <small>{{ incident.discoveryDate | date:'mediumDate' }} | {{ incident.status }}</small>
+        </article>
+      } @empty {
+        <p class="empty-state">No incidents match the selected filters.</p>
+      }
+    </div>
+  </section>
+}

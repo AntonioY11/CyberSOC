@@ -1,0 +1,51 @@
+<div class="app-frame">
+  <aside class="sidebar">
+    <a routerLink="/dashboard" class="brand">
+      <span class="brand-mark">CS</span>
+      <span>
+        <strong>CyberSOC</strong>
+        <small>Threat Attribution</small>
+      </span>
+    </a>
+
+    @if (user$ | async; as user) {
+      <div class="operator-card">
+        <span class="status-dot"></span>
+        <div>
+          <strong>{{ user.name }}</strong>
+          <small>{{ user.role }}</small>
+        </div>
+      </div>
+
+      <nav class="nav-stack" aria-label="Main navigation">
+        <a routerLink="/dashboard" routerLinkActive="active">Dashboard</a>
+        <a routerLink="/incidents" routerLinkActive="active">Incident Queue</a>
+        <a routerLink="/incidents/new" routerLinkActive="active">Report Incident</a>
+        @if (user.role === 'ANALYST') {
+          <a routerLink="/my-cases" routerLinkActive="active">My Assigned Cases</a>
+        }
+        @if (user.role === 'ADMIN') {
+          <span class="nav-section">Admin</span>
+          <a routerLink="/admin/systems" routerLinkActive="active">System Management</a>
+          <a routerLink="/admin/users" routerLinkActive="active">User Management</a>
+          <a routerLink="/admin/audit" routerLinkActive="active">Global Audit Logs</a>
+        }
+      </nav>
+    }
+
+    <button class="button ghost sidebar-action" type="button" (click)="logout()">Log out</button>
+  </aside>
+
+  <main class="workspace">
+    @if (messages$ | async; as messages) {
+      <div class="toast-stack" aria-live="polite">
+        @for (message of messages; track message; let index = $index) {
+          <button class="toast" type="button" (click)="dismiss(index)">
+            {{ message }}
+          </button>
+        }
+      </div>
+    }
+    <router-outlet />
+  </main>
+</div>
