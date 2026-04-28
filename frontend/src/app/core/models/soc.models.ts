@@ -1,5 +1,5 @@
 export type UserRole = 'ADMIN' | 'ANALYST';
-export type SystemType = 'Server' | 'Database' | 'Application' | 'Network';
+export type SystemType = 'Network' | 'Application' | 'Database' | 'Server' | 'Endpoint' | 'IoT';
 export type ThreatLevel = 'Low' | 'Medium' | 'High' | 'Critical';
 export type IncidentStatus = 'NEW' | 'ASSIGNED' | 'INVESTIGATING' | 'MITIGATED' | 'RESOLVED';
 export type IncidentSeverity = 'Low' | 'Medium' | 'High' | 'Critical';
@@ -18,6 +18,30 @@ export interface SystemAsset {
   description: string;
   ipAddress: string;
   criticality: number;
+}
+
+export interface InviteUserDraft {
+  email: string;
+  name: string;
+  role: UserRole;
+}
+
+export interface InviteUserResult {
+  user: SocUser;
+  temporaryPassword: string;
+}
+
+export interface AssetDraft {
+  name: string;
+  type: SystemType;
+  ipAddress: string;
+  criticality: number;
+  description: string;
+}
+
+export interface ChangePasswordDraft {
+  currentPassword: string;
+  newPassword: string;
 }
 
 export interface ThreatActor {

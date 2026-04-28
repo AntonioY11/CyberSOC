@@ -3,10 +3,11 @@ import { Component, inject } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService } from '../core/services/auth.service';
 import { NotificationService } from '../core/services/notification.service';
+import { ChangePasswordModalComponent } from './change-password-modal.component';
 
 @Component({
   selector: 'app-shell',
-  imports: [AsyncPipe, RouterLink, RouterLinkActive, RouterOutlet],
+  imports: [AsyncPipe, ChangePasswordModalComponent, RouterLink, RouterLinkActive, RouterOutlet],
   templateUrl: './shell.component.html'
 })
 export class ShellComponent {
@@ -16,6 +17,19 @@ export class ShellComponent {
 
   readonly user$ = this.authService.user$;
   readonly messages$ = this.notifications.messages$;
+  passwordModalOpen = false;
+
+  openPasswordModal(): void {
+    this.passwordModalOpen = true;
+  }
+
+  closePasswordModal(): void {
+    this.passwordModalOpen = false;
+  }
+
+  onPasswordChanged(): void {
+    this.notifications.notify('Your password was changed successfully.');
+  }
 
   logout(): void {
     this.authService.logout();

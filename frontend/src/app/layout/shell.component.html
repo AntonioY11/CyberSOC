@@ -33,7 +33,10 @@
       </nav>
     }
 
-    <button class="button ghost sidebar-action" type="button" (click)="logout()">Log out</button>
+    <div class="sidebar-action action-stack">
+      <button class="button ghost wide" type="button" (click)="openPasswordModal()">Change password</button>
+      <button class="button ghost wide" type="button" (click)="logout()">Log out</button>
+    </div>
   </aside>
 
   <main class="workspace">
@@ -49,3 +52,9 @@
     <router-outlet />
   </main>
 </div>
+
+<app-change-password-modal
+  [open]="passwordModalOpen"
+  (closed)="closePasswordModal()"
+  (passwordChanged)="onPasswordChanged()"
+/>

@@ -19,4 +19,8 @@ export class SystemService {
       tap((systems) => this.systemsSubject.next(systems))
     );
   }
+
+  deleteSystem(systemId: string): Observable<void> {
+    return this.cyber.delete<void>(`/systems/${systemId}/`);
+  }
 }

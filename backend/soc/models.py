@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from django.contrib.auth.models import AbstractUser
-from django.core.validators import FileExtensionValidator, MaxValueValidator, MinValueValidator
+from django.core.validators import FileExtensionValidator, MaxValueValidator, MinValueValidator, RegexValidator
 from django.db import models
 from django.utils import timezone
 
@@ -18,6 +18,8 @@ class User(AbstractUser):
     def save(self, *args, **kwargs):
         if not self.name:
             self.name = self.get_full_name() or self.username
+        if self.role == self.Role.ADMIN:
+            self.is_staff = True
         super().save(*args, **kwargs)
 
     def __str__(self) -> str:
@@ -26,15 +28,25 @@ class User(AbstractUser):
 
 class System(models.Model):
     class SystemType(models.TextChoices):
-        SERVER = "Server", "Server"
-        DATABASE = "Database", "Database"
-        APPLICATION = "Application", "Application"
         NETWORK = "Network", "Network"
+        APPLICATION = "Application", "Application"
+        DATABASE = "Database", "Database"
+        SERVER = "Server", "Server"
+        ENDPOINT = "Endpoint", "Endpoint"
+        IOT = "IoT", "IoT"
 
     name = models.CharField(max_length=120)
     type = models.CharField(max_length=20, choices=SystemType.choices)
     description = models.TextField(blank=True)
-    ip_address = models.GenericIPAddressField(protocol="both", unpack_ipv4=True)
+    ip_address = models.GenericIPAddressField(
+        protocol="IPv4",
+        validators=[
+            RegexValidator(
+                regex=r"^(?:(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\.){3}(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)$",
+                message="Enter a valid IPv4 address.",
+            )
+        ],
+    )
     criticality = models.PositiveSmallIntegerField(validators=[MinValueValidator(1), MaxValueValidator(5)])
 
     def __str__(self) -> str:
@@ -110,3 +122,17 @@ class IncidentLog(models.Model):
 
     def __str__(self) -> str:
         return f"{self.action} - {self.incident.title}"
+
+
+class AuditLog(models.Model):
+    actor = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="audit_logs")
+    action_type = models.CharField(max_length=100)
+    target_identifier = models.CharField(max_length=200)
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-timestamp"]
+
+    def __str__(self) -> str:
+        actor_id = self.actor_id if self.actor_id is not None else "system"
+        return f"{self.action_type} by {actor_id} on {self.target_identifier}"

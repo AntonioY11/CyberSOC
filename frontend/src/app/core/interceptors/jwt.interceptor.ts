@@ -4,8 +4,10 @@ import { AuthService } from '../services/auth.service';
 
 export const jwtInterceptor: HttpInterceptorFn = (request, next) => {
   const token = inject(AuthService).token;
+  const isApiRequest = request.url.startsWith('http://127.0.0.1:8001/api') || request.url.startsWith('/api');
+  const isLoginRequest = request.url.includes('/auth/login/');
 
-  if (!token) {
+  if (!token || !isApiRequest || isLoginRequest) {
     return next(request);
   }
 

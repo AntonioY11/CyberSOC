@@ -1,0 +1,62 @@
+@if (open) {
+  <div class="modal-backdrop" role="presentation">
+    <section class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="add-asset-title">
+      <div class="panel-title">
+        <div>
+          <h2 id="add-asset-title">Add Asset</h2>
+          <p>Register an inventory asset with standardized type and criticality.</p>
+        </div>
+        <button class="button ghost small" type="button" (click)="close()">Close</button>
+      </div>
+
+      <form class="form-panel" [formGroup]="form" (ngSubmit)="submit()">
+        <label class="field">
+          <span>Name</span>
+          <input type="text" formControlName="name" placeholder="Identity gateway">
+          @if (form.controls.name.touched && form.controls.name.invalid) {
+            <small>Name is required.</small>
+          }
+        </label>
+
+        <div class="field-row">
+          <label class="field">
+            <span>Type</span>
+            <select formControlName="type">
+              @for (type of types; track type) {
+                <option [value]="type">{{ type }}</option>
+              }
+            </select>
+          </label>
+
+          <label class="field">
+            <span>Criticality</span>
+            <input type="number" formControlName="criticality" min="1" max="5">
+            @if (form.controls.criticality.touched && form.controls.criticality.invalid) {
+              <small>Criticality must be between 1 and 5.</small>
+            }
+          </label>
+        </div>
+
+        <label class="field">
+          <span>IP Address</span>
+          <input type="text" formControlName="ipAddress" placeholder="10.0.4.12">
+          @if (form.controls.ipAddress.touched && form.controls.ipAddress.invalid) {
+            <small>Enter a valid IPv4 address.</small>
+          }
+        </label>
+
+        <label class="field">
+          <span>Description</span>
+          <textarea rows="4" formControlName="description" placeholder="Primary identity gateway for analyst access."></textarea>
+          @if (form.controls.description.touched && form.controls.description.invalid) {
+            <small>Description should explain the asset role.</small>
+          }
+        </label>
+
+        <button class="button primary wide" type="submit" [disabled]="submitting">
+          {{ submitting ? 'Adding...' : 'Add Asset' }}
+        </button>
+      </form>
+    </section>
+  </div>
+}

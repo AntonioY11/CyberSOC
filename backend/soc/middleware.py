@@ -1,3 +1,4 @@
+## Run before each request ta tchouf iza l user authenticated wla la, w t7ot l user bl thread local variable ta estaamlo baaden
 from __future__ import annotations
 
 import threading

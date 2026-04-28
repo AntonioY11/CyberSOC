@@ -1,14 +1,61 @@
+## to convert django object to json for angular
 from __future__ import annotations
 
+from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 
-from soc.models import Incident, IncidentLog, System, ThreatActor, User
+from soc.models import AuditLog, Incident, IncidentLog, System, ThreatActor, User
 
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ["id", "username", "email", "name", "role"]
+
+
+class InviteUserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ["email", "name", "role"]
+
+    def validate_role(self, value):
+        if value not in {User.Role.ADMIN, User.Role.ANALYST}:
+            raise serializers.ValidationError("Role must be ADMIN or ANALYST.")
+        return value
+
+    def create(self, validated_data):
+        temporary_password = self.context["temporary_password"]
+        email = validated_data["email"].lower()
+        user = User(
+            username=email,
+            email=email,
+            name=validated_data["name"],
+            role=validated_data["role"],
+            is_staff=validated_data["role"] == User.Role.ADMIN,
+        )
+        user.set_password(temporary_password)
+        user.save()
+        return user
+
+
+class InviteUserResponseSerializer(serializers.Serializer):
+    user = UserSerializer()
+    temporary_password = serializers.CharField()
+
+
+class ChangePasswordSerializer(serializers.Serializer):
+    current_password = serializers.CharField(write_only=True)
+    new_password = serializers.CharField(write_only=True)
+
+    def validate_current_password(self, value):
+        user = self.context["request"].user
+        if not user.check_password(value):
+            raise serializers.ValidationError("Current password is incorrect.")
+        return value
+
+    def validate_new_password(self, value):
+        validate_password(value, self.context["request"].user)
+        return value
 
 
 class SystemSerializer(serializers.ModelSerializer):
@@ -27,6 +74,19 @@ class IncidentLogSerializer(serializers.ModelSerializer):
     class Meta:
         model = IncidentLog
         fields = ["id", "incident", "action", "message", "timestamp", "performed_by"]
+
+
+class AuditLogSerializer(serializers.ModelSerializer):
+    actor_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = AuditLog
+        fields = ["id", "actor_id", "actor_name", "action_type", "target_identifier", "timestamp"]
+
+    def get_actor_name(self, obj):
+        if obj.actor:
+            return obj.actor.name or obj.actor.username
+        return "System"
 
 
 class IncidentSerializer(serializers.ModelSerializer):

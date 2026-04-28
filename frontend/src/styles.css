@@ -170,6 +170,11 @@ td span,
   margin-top: auto;
 }
 
+.action-stack {
+  display: grid;
+  gap: 10px;
+}
+
 .button {
   display: inline-flex;
   min-height: 38px;
@@ -770,6 +775,107 @@ progress::-webkit-progress-value {
   padding: 24px;
   color: var(--muted);
   text-align: center;
+}
+
+.modal-backdrop {
+  position: fixed;
+  z-index: 20;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(2, 6, 23, 0.72);
+  backdrop-filter: blur(10px);
+}
+
+.modal-panel {
+  width: min(560px, 100%);
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel-strong);
+  box-shadow: var(--shadow);
+}
+
+.success-state {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding: 18px;
+  border: 1px solid rgba(16, 185, 129, 0.42);
+  border-radius: 8px;
+  background: rgba(16, 185, 129, 0.1);
+}
+
+.success-state strong {
+  overflow-wrap: anywhere;
+  color: #a7f3d0;
+  font-size: 1.6rem;
+}
+
+.secret-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.secret-row strong {
+  min-width: 0;
+}
+
+.success-state p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.confirm-card {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 14px;
+  width: min(440px, 100%);
+  padding: 18px;
+  border: 1px solid rgba(255, 54, 95, 0.36);
+  border-radius: 8px;
+  background: rgba(20, 31, 54, 0.98);
+  box-shadow: var(--shadow);
+}
+
+.confirm-icon {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border: 1px solid rgba(255, 54, 95, 0.42);
+  border-radius: 8px;
+  color: #fecdd3;
+  background: rgba(255, 54, 95, 0.14);
+  font-weight: 900;
+}
+
+.confirm-card h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.confirm-card p {
+  margin: 6px 0 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.confirm-card strong {
+  color: var(--text);
+}
+
+.confirm-actions {
+  display: flex;
+  grid-column: 1 / -1;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 4px;
 }
 
 @media (max-width: 1100px) {

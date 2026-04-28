@@ -1,0 +1,58 @@
+@if (open) {
+  <div class="modal-backdrop" role="presentation">
+    <section class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="invite-user-title">
+      <div class="panel-title">
+        <div>
+          <h2 id="invite-user-title">Invite User</h2>
+          <p>Create a SOC account and issue a one-time temporary password.</p>
+        </div>
+        <button class="button ghost small" type="button" (click)="close()">Close</button>
+      </div>
+
+      @if (temporaryPassword) {
+        <div class="success-state">
+          <span class="eyebrow">Temporary password</span>
+          <div class="secret-row">
+            <strong class="mono">{{ temporaryPassword }}</strong>
+            <button class="button small" type="button" (click)="copyTemporaryPassword()">
+              {{ copied ? 'Copied' : 'Copy' }}
+            </button>
+          </div>
+          <p>Show this to the admin now. It will be cleared when this modal closes.</p>
+        </div>
+        <button class="button primary wide" type="button" (click)="close()">Done</button>
+      } @else {
+        <form class="form-panel" [formGroup]="form" (ngSubmit)="submit()">
+          <label class="field">
+            <span>Name</span>
+            <input type="text" formControlName="name" placeholder="Nour Haddad">
+            @if (form.controls.name.touched && form.controls.name.invalid) {
+              <small>Name is required.</small>
+            }
+          </label>
+
+          <label class="field">
+            <span>Email</span>
+            <input type="email" formControlName="email" placeholder="analyst@cybersoc.local">
+            @if (form.controls.email.touched && form.controls.email.invalid) {
+              <small>Enter a valid email address.</small>
+            }
+          </label>
+
+          <label class="field">
+            <span>Role</span>
+            <select formControlName="role">
+              @for (role of roles; track role) {
+                <option [value]="role">{{ role }}</option>
+              }
+            </select>
+          </label>
+
+          <button class="button primary wide" type="submit" [disabled]="submitting">
+            {{ submitting ? 'Inviting...' : 'Invite User' }}
+          </button>
+        </form>
+      }
+    </section>
+  </div>
+}

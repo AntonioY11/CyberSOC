@@ -2,7 +2,7 @@ import { AsyncPipe, NgClass } from '@angular/common';
 import { Component, OnInit, inject } from '@angular/core';
 import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
-import { combineLatest } from 'rxjs';
+import { combineLatest, finalize } from 'rxjs';
 import { IncidentDraft, IncidentSeverity } from '../../core/models/soc.models';
 import { IncidentService } from '../../core/services/incident.service';
 import { SystemService } from '../../core/services/system.service';
@@ -66,14 +66,12 @@ export class IncidentFormComponent implements OnInit {
     }
 
     this.submitting = true;
-    this.incidentService.createIncident(this.form.getRawValue() as IncidentDraft).subscribe({
-      next: (incident) => {
+    this.incidentService
+      .createIncident(this.form.getRawValue() as IncidentDraft)
+      .pipe(finalize(() => (this.submitting = false)))
+      .subscribe((incident) => {
         void this.router.navigate(['/incidents', incident.id]);
-      },
-      complete: () => {
-        this.submitting = false;
-      }
-    });
+      });
   }
 
   private fileSizeValidator(control: AbstractControl<File | null>): ValidationErrors | null {

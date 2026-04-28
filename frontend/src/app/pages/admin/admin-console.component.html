@@ -16,7 +16,7 @@
   <section class="panel table-panel">
     <div class="panel-title">
       <h2>System Management</h2>
-      <button class="button small">Add Asset</button>
+      <button class="button small" type="button" (click)="openAssetModal()">Add Asset</button>
     </div>
     <div class="responsive-table">
       <table>
@@ -39,7 +39,15 @@
                 <td class="mono">{{ system.ipAddress }}</td>
                 <td>{{ system.criticality }}/5</td>
                 <td>{{ system.description }}</td>
-                <td><button class="button danger small">Delete</button></td>
+                <td>
+                  <button
+                    class="button danger small"
+                    type="button"
+                    (click)="requestDeleteSystem(system.id, system.name, system.ipAddress)"
+                  >
+                    Delete
+                  </button>
+                </td>
               </tr>
             }
           }
@@ -53,7 +61,7 @@
   <section class="panel table-panel">
     <div class="panel-title">
       <h2>User Management</h2>
-      <button class="button small">Invite User</button>
+      <button class="button small" type="button" (click)="openInviteModal()">Invite User</button>
     </div>
     <div class="responsive-table">
       <table>
@@ -72,7 +80,16 @@
                 <td>{{ user.name }}</td>
                 <td>{{ user.email }}</td>
                 <td><span class="actor-chip">{{ user.role }}</span></td>
-                <td><button class="button danger small">Delete</button></td>
+                <td>
+                  <button
+                    class="button danger small"
+                    type="button"
+                    [disabled]="isCurrentUser(user.id)"
+                    (click)="requestDeleteUser(user.id, user.email)"
+                  >
+                    Delete
+                  </button>
+                </td>
               </tr>
             }
           }
@@ -80,6 +97,69 @@
       </table>
     </div>
   </section>
+}
+
+<app-add-asset-modal
+  [open]="assetModalOpen"
+  (closed)="closeAssetModal()"
+  (assetAdded)="refreshSystemsAndAudit()"
+/>
+
+<app-invite-user-modal
+  [open]="inviteModalOpen"
+  (closed)="closeInviteModal()"
+  (userInvited)="refreshUsersAndAudit()"
+/>
+
+@if (pendingDeleteUser; as user) {
+  <div class="modal-backdrop" role="presentation">
+    <section class="confirm-card" role="dialog" aria-modal="true" aria-labelledby="delete-user-title">
+      <span class="confirm-icon">!</span>
+      <div>
+        <h2 id="delete-user-title">Delete user?</h2>
+        <p>
+          This will permanently remove <strong>{{ user.email }}</strong> from CyberSOC.
+        </p>
+      </div>
+      <div class="confirm-actions">
+        <button class="button ghost" type="button" (click)="cancelDeleteUser()">Cancel</button>
+        <button
+          class="button danger"
+          type="button"
+          [disabled]="deletingUserId === user.id"
+          (click)="confirmDeleteUser()"
+        >
+          {{ deletingUserId === user.id ? 'Deleting...' : 'Delete user' }}
+        </button>
+      </div>
+    </section>
+  </div>
+}
+
+@if (pendingDeleteSystem; as system) {
+  <div class="modal-backdrop" role="presentation">
+    <section class="confirm-card" role="dialog" aria-modal="true" aria-labelledby="delete-system-title">
+      <span class="confirm-icon">!</span>
+      <div>
+        <h2 id="delete-system-title">Delete asset?</h2>
+        <p>
+          This will permanently remove <strong>{{ system.name }}</strong>
+          <span class="mono">({{ system.ipAddress }})</span> from the inventory.
+        </p>
+      </div>
+      <div class="confirm-actions">
+        <button class="button ghost" type="button" (click)="cancelDeleteSystem()">Cancel</button>
+        <button
+          class="button danger"
+          type="button"
+          [disabled]="deletingSystemId === system.id"
+          (click)="confirmDeleteSystem()"
+        >
+          {{ deletingSystemId === system.id ? 'Deleting...' : 'Delete asset' }}
+        </button>
+      </div>
+    </section>
+  </div>
 }
 
 @if (route.snapshot.data['panel'] === 'audit') {

@@ -68,3 +68,17 @@ export interface BackendAuthSession {
   refresh?: string;
   user: BackendUser;
 }
+
+export interface BackendInviteUserResponse {
+  user: BackendUser;
+  temporary_password: string;
+}
+
+export interface BackendAuditLog {
+  id: number | string;
+  actor_id: number | string | null;
+  actor_name?: string;
+  action_type: string;
+  target_identifier: string;
+  timestamp: string;
+}

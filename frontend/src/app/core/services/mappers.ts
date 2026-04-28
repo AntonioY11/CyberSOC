@@ -1,7 +1,9 @@
 import {
   BackendAuthSession,
+  BackendAuditLog,
   BackendIncident,
   BackendIncidentLog,
+  BackendInviteUserResponse,
   BackendSystemAsset,
   BackendThreatActor,
   BackendUser
@@ -9,6 +11,7 @@ import {
 import {
   AuthSession,
   AuditLogEntry,
+  InviteUserResult,
   Incident,
   IncidentLog,
   SocUser,
@@ -67,6 +70,17 @@ export function mapAuditLog(log: BackendIncidentLog): AuditLogEntry {
   };
 }
 
+export function mapGovernanceAuditLog(log: BackendAuditLog): AuditLogEntry {
+  return {
+    id: String(log.id),
+    timestamp: log.timestamp,
+    actorName: log.actor_name ?? (log.actor_id ? `User ${log.actor_id}` : 'System'),
+    event: log.action_type.replaceAll('_', ' '),
+    target: log.target_identifier,
+    level: log.action_type.includes('DELETED') ? 'warning' : 'info'
+  };
+}
+
 export function mapIncident(incident: BackendIncident): Incident {
   const system = typeof incident.system === 'object' ? incident.system : incident.system_detail;
   const assignedTo =
@@ -101,5 +115,12 @@ export function mapAuthSession(session: BackendAuthSession): AuthSession {
     accessToken: session.access,
     refreshToken: session.refresh,
     user: mapUser(session.user)
+  };
+}
+
+export function mapInviteUserResult(result: BackendInviteUserResponse): InviteUserResult {
+  return {
+    user: mapUser(result.user),
+    temporaryPassword: result.temporary_password
   };
 }

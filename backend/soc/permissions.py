@@ -8,7 +8,7 @@ class IsAdminForSystemWrite(BasePermission):
         if not request.user or not request.user.is_authenticated:
             return False
 
-        if view.action in {"create", "destroy"}:
+        if view.action in {"create", "update", "partial_update", "destroy"}:
             return request.user.role == "ADMIN"
         return True
 

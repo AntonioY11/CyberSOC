@@ -19,4 +19,8 @@ export class UserService {
       tap((users) => this.usersSubject.next(users))
     );
   }
+
+  deleteUser(userId: string): Observable<void> {
+    return this.cyber.delete<void>(`/users/${userId}/`);
+  }
 }
