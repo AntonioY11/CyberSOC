@@ -23,6 +23,12 @@
           <dt>Status</dt>
           <dd>{{ incident.status }}</dd>
         </div>
+        @if (incident.resolutionSummary) {
+          <div>
+            <dt>Resolution Summary</dt>
+            <dd>{{ incident.resolutionSummary }}</dd>
+          </div>
+        }
         <div>
           <dt>Discovery Date</dt>
           <dd>{{ incident.discoveryDate | date:'fullDate' }}</dd>
@@ -33,7 +39,16 @@
         </div>
         <div>
           <dt>Assigned Analyst</dt>
-          <dd>{{ incident.assignedTo?.name ?? 'Unassigned' }}</dd>
+          <dd>
+            @if (incident.assignedTo) {
+              <span class="assignee-pill">
+                <span class="assignee-avatar">{{ assigneeInitials(incident.assignedTo) }}</span>
+                <span>{{ incident.assignedTo.name }}</span>
+              </span>
+            } @else {
+              Unassigned
+            }
+          </dd>
         </div>
         <div>
           <dt>Affected System</dt>
@@ -70,6 +85,107 @@
       }
     </article>
   </section>
+
+  @if (canClaimIncident) {
+    <section class="panel ownership-banner">
+      <div>
+        <h2>Claim this incident</h2>
+        <p>You can take ownership immediately and start updating the incident lifecycle.</p>
+      </div>
+      <button class="button primary" type="button" (click)="claimIncident()">Claim Incident</button>
+    </section>
+  }
+
+  @if (isAdmin) {
+    <section class="panel ownership-banner">
+      <div>
+        <h2>Dispatch to analyst</h2>
+        <p>Assign this case to an active analyst and set ownership in one step.</p>
+      </div>
+      <div class="dispatcher-controls">
+        <input
+          class="table-search"
+          type="search"
+          placeholder="Search analysts"
+          [value]="analystSearchTerm"
+          (input)="analystSearchTerm = ($any($event.target).value)"
+        >
+        <select [value]="selectedAnalystId" (change)="selectedAnalystId = $any($event.target).value">
+          <option value="">Select analyst</option>
+          @for (analyst of filteredAnalysts(); track analyst.id) {
+            <option [value]="analyst.id">{{ analyst.name }} | {{ analyst.email }}</option>
+          }
+        </select>
+        <button class="button primary" type="button" [disabled]="!selectedAnalystId" (click)="assignIncident()">Assign</button>
+      </div>
+    </section>
+  }
+
+  @if (canManageStatus) {
+    <section class="panel">
+      <div class="panel-title">
+        <div>
+          <h2>Status control</h2>
+          <p>Update the incident lifecycle and severity from one place.</p>
+        </div>
+        <span class="severity-pill" [ngClass]="severityClass(form.controls.severity.value)">{{ form.controls.severity.value }}</span>
+      </div>
+
+      <form class="form-panel" [formGroup]="form" (ngSubmit)="submit()">
+        <div class="field">
+          <span>Status Stepper</span>
+          <div class="segmented" role="group" aria-label="Incident status stepper">
+            @for (status of statuses; track status) {
+              <button type="button" [class.active]="form.controls.status.value === status" [disabled]="statusButtonDisabled(status)" (click)="selectStatus(status)">{{ status }}</button>
+            }
+          </div>
+        </div>
+
+        <div class="field-row">
+          <label class="field">
+            <span>Severity</span>
+            <select formControlName="severity">
+              @for (severity of severities; track severity) {
+                <option [value]="severity">{{ severity }}</option>
+              }
+            </select>
+          </label>
+
+          <div class="field">
+            <span>Severity badge</span>
+            <span class="severity-pill" [ngClass]="severityClass(form.controls.severity.value)">{{ form.controls.severity.value }}</span>
+          </div>
+        </div>
+
+        @if (form.controls.status.value === 'RESOLVED') {
+          <label class="field">
+            <span>Resolution Summary</span>
+            <textarea rows="4" formControlName="resolutionSummary" placeholder="Summarize the containment, eradication, and recovery outcome."></textarea>
+            @if (form.touched && form.hasError('resolutionSummaryRequired')) {
+              <small>Resolution summary is required before closing the incident.</small>
+            }
+          </label>
+        }
+
+        <button class="button primary wide" type="submit" [disabled]="submitting || !isEditable">
+          {{ submitting ? 'Saving...' : 'Save Incident Progress' }}
+        </button>
+
+        @if (!isEditable) {
+          <small>Only the assigned analyst or an admin can update status and severity.</small>
+        }
+      </form>
+    </section>
+  }
+
+  @if (!canManageStatus && !canClaimIncident && !isAdmin) {
+    <section class="panel ownership-banner muted-banner">
+      <div>
+        <h2>Ownership locked</h2>
+        <p>This incident is assigned to another analyst. You can view the case data, but you cannot change status.</p>
+      </div>
+    </section>
+  }
 
   <section class="detail-grid">
     <article class="panel">

@@ -43,9 +43,11 @@ export function mapThreatActor(actor: BackendThreatActor): ThreatActor {
   return {
     id: String(actor.id),
     name: actor.name,
+    status: actor.status,
     originCountry: actor.origin_country,
     tactics: actor.tactics,
-    threatLevel: actor.threat_level
+    threatLevel: actor.threat_level,
+    createdAt: actor.created_at
   };
 }
 
@@ -101,6 +103,7 @@ export function mapIncident(incident: BackendIncident): Incident {
     status: incident.status,
     severity: incident.severity,
     isTruePositive: incident.is_true_positive,
+    resolutionSummary: incident.resolution_summary,
     evidenceImage: incident.evidence_image_url ?? incident.evidence_image,
     forensicReport: incident.forensic_report_url ?? incident.forensic_report,
     system: mapSystem(system),

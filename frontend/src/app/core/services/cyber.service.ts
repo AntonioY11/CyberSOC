@@ -4,7 +4,7 @@ import { Observable } from 'rxjs';
 
 @Injectable({ providedIn: 'root' })
 export class CyberService {
-  private readonly apiBase = 'http://127.0.0.1:8001/api';
+  private readonly apiBase = 'http://127.0.0.1:8000/api';
 
   constructor(private readonly http: HttpClient) {}
 

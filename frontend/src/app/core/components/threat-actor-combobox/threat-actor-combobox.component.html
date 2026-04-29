@@ -1,0 +1,77 @@
+<div class="field threat-actor-combobox">
+  <span>{{ label }}</span>
+
+  <button class="picker-trigger" type="button" (click)="open()">
+    <div>
+      <strong>
+        @if (selectedCount) {
+          {{ selectedCount }} selected actor{{ selectedCount === 1 ? '' : 's' }}
+        } @else {
+          Select actors
+        }
+      </strong>
+      <small>
+        @if (selectedActorNames.length) {
+          {{ selectedActorNames.join(', ') }}
+        } @else if (pendingNewActorName) {
+          New actor to create: {{ pendingNewActorName }}
+        } @else {
+          {{ hint }}
+        }
+      </small>
+    </div>
+    <span class="picker-chevron">Open</span>
+  </button>
+
+  @if (isOpen) {
+    <div class="picker-backdrop" (click)="close()">
+      <section class="picker-dialog" role="dialog" aria-modal="true" aria-label="Threat actor picker" (click)="$event.stopPropagation()">
+        <header class="picker-header">
+          <div>
+            <strong>{{ label }}</strong>
+            <p>{{ hint }}</p>
+          </div>
+          <button class="button ghost small" type="button" (click)="close()">Close</button>
+        </header>
+
+        <label class="picker-search field">
+          <span>Search</span>
+          <input
+            type="text"
+            [placeholder]="placeholder"
+            [value]="searchTerm"
+            autocomplete="off"
+            (input)="onSearchInput($event)"
+          >
+        </label>
+
+        @if (actors$ | async; as actors) {
+          <div class="picker-body">
+            <select #actorSelect class="picker-list" multiple size="10" (change)="syncSelection(actorSelect)">
+              @for (actor of filteredActors(actors); track actor.id) {
+                <option [value]="actor.id" [selected]="workingSelection.includes(actor.id)">
+                  {{ actor.name }} | {{ actor.status }}
+                </option>
+              }
+            </select>
+
+            @if (!filteredActors(actors).length) {
+              <p class="combo-empty">No known actor matches that search.</p>
+            }
+
+            @if (canAddActor(actors)) {
+              <button class="button primary small combo-add" type="button" (click)="addTypedActor(searchTerm)">
+                + Add "{{ searchTerm.trim() }}" as New Actor
+              </button>
+            }
+          </div>
+        }
+
+        <footer class="picker-footer">
+          <button class="button ghost" type="button" (click)="close()">Cancel</button>
+          <button class="button primary" type="button" (click)="applySelection()">Use Selection</button>
+        </footer>
+      </section>
+    </div>
+  }
+</div>

@@ -8,10 +8,11 @@ import { SystemService } from '../../core/services/system.service';
 import { UserService } from '../../core/services/user.service';
 import { AddAssetModalComponent } from './add-asset-modal.component';
 import { InviteUserModalComponent } from './invite-user-modal.component';
+import { ThreatActorManagementComponent } from './threat-actor-management.component';
 
 @Component({
   selector: 'app-admin-console',
-  imports: [AddAssetModalComponent, AsyncPipe, DatePipe, InviteUserModalComponent, NgClass, RouterLink, RouterLinkActive],
+  imports: [AddAssetModalComponent, AsyncPipe, DatePipe, InviteUserModalComponent, NgClass, RouterLink, RouterLinkActive, ThreatActorManagementComponent],
   templateUrl: './admin-console.component.html'
 })
 export class AdminConsoleComponent implements OnInit {

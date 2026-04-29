@@ -54,17 +54,14 @@
       </label>
     </div>
 
-    <label class="field">
-      <span>Threat actors</span>
-      <select multiple formControlName="actorIds" size="4">
-        @if (actors$ | async; as actors) {
-          @for (actor of actors; track actor.id) {
-            <option [value]="actor.id">{{ actor.name }} | {{ actor.threatLevel }}</option>
-          }
-        }
-      </select>
-      <small>Hold Ctrl or Cmd to link multiple actors.</small>
-    </label>
+    <app-threat-actor-combobox
+      [actorIdsControl]="form.controls.actorIds"
+      [newActorNameControl]="form.controls.threatActorName"
+    ></app-threat-actor-combobox>
+
+    @if (form.touched && form.hasError('actorSelection')) {
+      <small>Please select at least one actor or add a new actor name.</small>
+    }
   </section>
 
   <section class="panel form-panel">

@@ -35,7 +35,16 @@
               </td>
               <td><span class="severity-pill" [ngClass]="incident.severity.toLowerCase()">{{ incident.severity }}</span></td>
               <td>{{ incident.status }}</td>
-              <td>{{ incident.assignedTo?.name ?? 'Unassigned' }}</td>
+              <td>
+                @if (incident.assignedTo) {
+                  <span class="assignee-pill">
+                    <span class="assignee-avatar">{{ assigneeInitials(incident.assignedTo) }}</span>
+                    <span>{{ incident.assignedTo.name }}</span>
+                  </span>
+                } @else {
+                  Unassigned
+                }
+              </td>
               <td>{{ incident.discoveryDate | date:'mediumDate' }}</td>
               <td class="actions-cell">
                 @if (!incident.assignedTo && (user$ | async)?.role === 'ANALYST') {

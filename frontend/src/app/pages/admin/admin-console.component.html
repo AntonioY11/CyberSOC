@@ -8,6 +8,7 @@
 
 <nav class="tab-row">
   <a routerLink="/admin/systems" routerLinkActive="active">Systems</a>
+  <a routerLink="/admin/threat-actors" routerLinkActive="active">Threat Actors</a>
   <a routerLink="/admin/users" routerLinkActive="active">Users</a>
   <a routerLink="/admin/audit" routerLinkActive="active">Audit Logs</a>
 </nav>
@@ -97,6 +98,10 @@
       </table>
     </div>
   </section>
+}
+
+@if (route.snapshot.data['panel'] === 'threat-actors') {
+  <app-threat-actor-management></app-threat-actor-management>
 }
 
 <app-add-asset-modal

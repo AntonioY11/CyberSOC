@@ -1,8 +1,9 @@
 export type UserRole = 'ADMIN' | 'ANALYST';
 export type SystemType = 'Network' | 'Application' | 'Database' | 'Server' | 'Endpoint' | 'IoT';
 export type ThreatLevel = 'Low' | 'Medium' | 'High' | 'Critical';
-export type IncidentStatus = 'NEW' | 'ASSIGNED' | 'INVESTIGATING' | 'MITIGATED' | 'RESOLVED';
-export type IncidentSeverity = 'Low' | 'Medium' | 'High' | 'Critical';
+export type ThreatActorStatus = 'UNVERIFIED' | 'VERIFIED';
+export type IncidentStatus = 'NEW' | 'ASSIGNED' | 'MITIGATED' | 'RESOLVED';
+export type IncidentSeverity = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 
 export interface SocUser {
   id: string;
@@ -47,9 +48,11 @@ export interface ChangePasswordDraft {
 export interface ThreatActor {
   id: string;
   name: string;
+  status: ThreatActorStatus;
   originCountry: string;
   tactics: string;
   threatLevel: ThreatLevel;
+  createdAt: string;
 }
 
 export interface IncidentLog {
@@ -68,6 +71,7 @@ export interface Incident {
   status: IncidentStatus;
   severity: IncidentSeverity;
   isTruePositive: boolean;
+  resolutionSummary: string;
   evidenceImage: string | null;
   forensicReport: string | null;
   system: SystemAsset;
@@ -76,14 +80,29 @@ export interface Incident {
   logs: IncidentLog[];
 }
 
+export interface IncidentStatusUpdateDraft {
+  status?: IncidentStatus;
+  severity?: IncidentSeverity;
+  resolutionSummary?: string;
+}
+
 export interface IncidentDraft {
   title: string;
   description: string;
   systemId: string;
   severity: IncidentSeverity;
   actorIds: string[];
+  threatActorName: string;
   evidenceImage: File | null;
   forensicReport: File | null;
+}
+
+export interface ThreatActorDraft {
+  name: string;
+  status: ThreatActorStatus;
+  originCountry: string;
+  tactics: string;
+  threatLevel: ThreatLevel;
 }
 
 export interface LoginCredentials {

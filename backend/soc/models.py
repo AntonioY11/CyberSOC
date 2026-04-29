@@ -54,41 +54,58 @@ class System(models.Model):
 
 
 class ThreatActor(models.Model):
+    class Status(models.TextChoices):
+        UNVERIFIED = "UNVERIFIED", "Unverified"
+        VERIFIED = "VERIFIED", "Verified"
+
     class ThreatLevel(models.TextChoices):
         LOW = "Low", "Low"
         MEDIUM = "Medium", "Medium"
         HIGH = "High", "High"
         CRITICAL = "Critical", "Critical"
 
-    name = models.CharField(max_length=120)
-    origin_country = models.CharField(max_length=100)
-    tactics = models.TextField()
-    threat_level = models.CharField(max_length=20, choices=ThreatLevel.choices)
+    name = models.CharField(
+        max_length=120,
+        validators=[
+            RegexValidator(
+                regex=r"^[A-Za-z0-9][A-Za-z0-9\s.'()/_&,-]*$",
+                message="Enter a valid threat actor name.",
+            )
+        ],
+    )
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.UNVERIFIED)
+    origin_country = models.CharField(max_length=100, blank=True, default="")
+    tactics = models.TextField(blank=True, default="")
+    threat_level = models.CharField(max_length=20, choices=ThreatLevel.choices, default=ThreatLevel.LOW)
+    created_at = models.DateTimeField(default=timezone.now)
 
     def __str__(self) -> str:
         return f"{self.name} ({self.threat_level})"
 
 
 class Incident(models.Model):
-    class Status(models.TextChoices):
+    class STATUS(models.TextChoices):
         NEW = "NEW", "New"
         ASSIGNED = "ASSIGNED", "Assigned"
-        INVESTIGATING = "INVESTIGATING", "Investigating"
         MITIGATED = "MITIGATED", "Mitigated"
         RESOLVED = "RESOLVED", "Resolved"
 
-    class Severity(models.TextChoices):
-        LOW = "Low", "Low"
-        MEDIUM = "Medium", "Medium"
-        HIGH = "High", "High"
-        CRITICAL = "Critical", "Critical"
+    class SEVERITY(models.TextChoices):
+        LOW = "LOW", "Low"
+        MEDIUM = "MEDIUM", "Medium"
+        HIGH = "HIGH", "High"
+        CRITICAL = "CRITICAL", "Critical"
+
+    Status = STATUS
+    Severity = SEVERITY
 
     title = models.CharField(max_length=200)
     description = models.TextField()
     discovery_date = models.DateField(default=timezone.now)
-    status = models.CharField(max_length=20, choices=Status.choices, default=Status.NEW)
-    severity = models.CharField(max_length=20, choices=Severity.choices)
+    status = models.CharField(max_length=20, choices=STATUS.choices, default=STATUS.NEW)
+    severity = models.CharField(max_length=20, choices=SEVERITY.choices, default=SEVERITY.LOW)
     is_true_positive = models.BooleanField(default=False)
+    resolution_summary = models.TextField(blank=True, default="")
     evidence_image = models.ImageField(upload_to="incidents/images/", null=True, blank=True)
     forensic_report = models.FileField(
         upload_to="incidents/reports/",

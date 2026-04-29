@@ -3,6 +3,7 @@ import {
   IncidentStatus,
   SystemType,
   ThreatLevel,
+  ThreatActorStatus,
   UserRole
 } from './soc.models';
 
@@ -25,9 +26,11 @@ export interface BackendSystemAsset {
 export interface BackendThreatActor {
   id: number | string;
   name: string;
+  status: ThreatActorStatus;
   origin_country: string;
   tactics: string;
   threat_level: ThreatLevel;
+  created_at: string;
 }
 
 export interface BackendIncidentLog {
@@ -50,6 +53,7 @@ export interface BackendIncident {
   status: IncidentStatus;
   severity: IncidentSeverity;
   is_true_positive: boolean;
+  resolution_summary: string;
   evidence_image: string | null;
   forensic_report: string | null;
   evidence_image_url?: string | null;

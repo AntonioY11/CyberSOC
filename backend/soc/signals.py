@@ -1,12 +1,26 @@
 from __future__ import annotations
 
+import logging
+
 from django.db.models.signals import m2m_changed, post_save, pre_save
 from django.dispatch import receiver
 
 from soc.middleware import get_current_user
 from soc.models import Incident, IncidentLog
 
-TRACKED_FIELDS = ["title", "description", "discovery_date", "status", "severity", "is_true_positive", "system_id", "assigned_to_id"]
+logger = logging.getLogger(__name__)
+
+TRACKED_FIELDS = [
+    "title",
+    "description",
+    "discovery_date",
+    "status",
+    "severity",
+    "resolution_summary",
+    "is_true_positive",
+    "system_id",
+    "assigned_to_id",
+]
 
 
 def resolve_performed_by(instance: Incident) -> str:
@@ -16,6 +30,18 @@ def resolve_performed_by(instance: Incident) -> str:
     if instance.assigned_to:
         return instance.assigned_to.name or instance.assigned_to.username
     return "System"
+
+
+def create_incident_log(instance: Incident, action: str, message: str) -> None:
+    try:
+        IncidentLog.objects.create(
+            incident=instance,
+            action=action,
+            message=message,
+            performed_by=resolve_performed_by(instance),
+        )
+    except Exception:
+        logger.exception("Failed to create incident log for incident %s", instance.pk)
 
 
 @receiver(pre_save, sender=Incident)
@@ -33,8 +59,6 @@ def cache_previous_incident_state(sender, instance: Incident, **kwargs):
 
 @receiver(post_save, sender=Incident)
 def create_incident_audit_log(sender, instance: Incident, created: bool, **kwargs):
-    performed_by = resolve_performed_by(instance)
-
     if created:
         action = "Incident Created"
         message = (
@@ -48,19 +72,14 @@ def create_incident_audit_log(sender, instance: Incident, created: bool, **kwarg
             old_value = old_values.get(field)
             new_value = getattr(instance, field)
             if old_value != new_value:
-                changes.append(f"{field.replace('_id', '')}: {old_value} -> {new_value}")
+                changes.append(f"{field.replace('_id', '').replace('_', ' ')}: {old_value} -> {new_value}")
 
         action = "Incident Updated"
         message = "No tracked fields changed during save."
         if changes:
             message = "; ".join(changes)
 
-    IncidentLog.objects.create(
-        incident=instance,
-        action=action,
-        message=message,
-        performed_by=performed_by,
-    )
+    create_incident_log(instance, action, message)
 
 
 @receiver(m2m_changed, sender=Incident.actors.through)
@@ -69,18 +88,13 @@ def create_incident_actor_audit_log(sender, instance: Incident, action: str, pk_
         return
 
     if action == "post_add":
-        message = f"Threat actor links added: {sorted(pk_set)}"
+        message = f"Threat actor links added: {sorted((str(pk) for pk in pk_set), key=str)}"
         log_action = "Threat Actor Linked"
     elif action == "post_remove":
-        message = f"Threat actor links removed: {sorted(pk_set)}"
+        message = f"Threat actor links removed: {sorted((str(pk) for pk in pk_set), key=str)}"
         log_action = "Threat Actor Unlinked"
     else:
         message = "All threat actor links cleared."
         log_action = "Threat Actor Cleared"
 
-    IncidentLog.objects.create(
-        incident=instance,
-        action=log_action,
-        message=message,
-        performed_by=resolve_performed_by(instance),
-    )
+    create_incident_log(instance, log_action, message)

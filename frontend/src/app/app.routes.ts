@@ -48,6 +48,11 @@ export const routes: Routes = [
         data: { roles: ['ADMIN'], panel: 'systems' }
       },
       {
+        path: 'admin/threat-actors',
+        component: AdminConsoleComponent,
+        data: { roles: ['ADMIN'], panel: 'threat-actors' }
+      },
+      {
         path: 'admin/users',
         component: AdminConsoleComponent,
         data: { roles: ['ADMIN'], panel: 'users' }

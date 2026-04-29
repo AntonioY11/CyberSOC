@@ -20,6 +20,13 @@ export class UserService {
     );
   }
 
+  loadAdminAnalysts(): Observable<SocUser[]> {
+    return this.cyber.get<BackendUser[]>('/admin/users/').pipe(
+      map((users) => users.map(mapUser).filter((user) => user.role === 'ANALYST')),
+      catchError(() => of([]))
+    );
+  }
+
   deleteUser(userId: string): Observable<void> {
     return this.cyber.delete<void>(`/users/${userId}/`);
   }

@@ -12,8 +12,8 @@ import { IncidentService } from '../../core/services/incident.service';
 export class DashboardComponent implements OnInit {
   private readonly incidentService = inject(IncidentService);
 
-  readonly statuses: Array<IncidentStatus | 'ALL'> = ['ALL', 'NEW', 'ASSIGNED', 'INVESTIGATING', 'MITIGATED', 'RESOLVED'];
-  readonly severities: Array<IncidentSeverity | 'ALL'> = ['ALL', 'Low', 'Medium', 'High', 'Critical'];
+  readonly statuses: Array<IncidentStatus | 'ALL'> = ['ALL', 'NEW', 'ASSIGNED', 'MITIGATED', 'RESOLVED'];
+  readonly severities: Array<IncidentSeverity | 'ALL'> = ['ALL', 'LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
   private readonly statusFilterSubject = new BehaviorSubject<IncidentStatus | 'ALL'>('ALL');
   private readonly severityFilterSubject = new BehaviorSubject<IncidentSeverity | 'ALL'>('ALL');
 
@@ -36,7 +36,7 @@ export class DashboardComponent implements OnInit {
       return {
         filteredIncidents,
         totalActive: activeIncidents.length,
-        highSeverity: incidents.filter((incident) => ['High', 'Critical'].includes(incident.severity)).length,
+        highSeverity: incidents.filter((incident) => ['HIGH', 'CRITICAL'].includes(incident.severity)).length,
         unassigned: incidents.filter((incident) => !incident.assignedTo).length,
         truePositiveRate: incidents.length ? truePositiveCount / incidents.length : 0
       };

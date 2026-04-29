@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable, catchError, map, of, tap } from 'rxjs';
 import { BackendIncident } from '../models/backend.models';
-import { Incident, IncidentDraft } from '../models/soc.models';
+import { Incident, IncidentDraft, IncidentStatusUpdateDraft } from '../models/soc.models';
 import { CyberService } from './cyber.service';
 import { mapIncident } from './mappers';
 
@@ -25,7 +25,21 @@ export class IncidentService {
   }
 
   claimIncident(incidentId: string): Observable<Incident> {
-    return this.cyber.patch<BackendIncident>(`/incidents/${incidentId}/claim/`, {}).pipe(
+    return this.cyber.post<BackendIncident>(`/incidents/${incidentId}/claim/`, {}).pipe(
+      map(mapIncident),
+      tap((incident) => this.replaceIncident(incident))
+    );
+  }
+
+  assignIncidentToAnalyst(incidentId: string, userId: string): Observable<Incident> {
+    return this.cyber.post<BackendIncident>(`/incidents/${incidentId}/assign-to-analyst/`, { user_id: userId }).pipe(
+      map(mapIncident),
+      tap((incident) => this.replaceIncident(incident))
+    );
+  }
+
+  updateIncidentStatus(incidentId: string, draft: IncidentStatusUpdateDraft): Observable<Incident> {
+    return this.cyber.patch<BackendIncident>(`/incidents/${incidentId}/update-status/`, draft).pipe(
       map(mapIncident),
       tap((incident) => this.replaceIncident(incident))
     );
@@ -40,6 +54,9 @@ export class IncidentService {
     formData.append('status', 'NEW');
     for (const actorId of draft.actorIds) {
       formData.append('actors', actorId);
+    }
+    if (draft.threatActorName.trim()) {
+      formData.append('threat_actor', draft.threatActorName.trim());
     }
 
     if (draft.evidenceImage) {

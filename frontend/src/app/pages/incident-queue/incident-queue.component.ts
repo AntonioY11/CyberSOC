@@ -2,7 +2,7 @@ import { AsyncPipe, DatePipe, NgClass } from '@angular/common';
 import { Component, OnInit, inject } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { combineLatest, map } from 'rxjs';
-import { Incident } from '../../core/models/soc.models';
+import { Incident, SocUser } from '../../core/models/soc.models';
 import { AuthService } from '../../core/services/auth.service';
 import { IncidentService } from '../../core/services/incident.service';
 
@@ -35,5 +35,18 @@ export class IncidentQueueComponent implements OnInit {
     }
 
     this.incidentService.claimIncident(incident.id).subscribe();
+  }
+
+  assigneeInitials(assignee: SocUser | null | undefined): string {
+    if (!assignee) {
+      return '';
+    }
+
+    return assignee.name
+      .split(/\s+/)
+      .filter(Boolean)
+      .map((part) => part.charAt(0).toUpperCase())
+      .slice(0, 2)
+      .join('');
   }
 }

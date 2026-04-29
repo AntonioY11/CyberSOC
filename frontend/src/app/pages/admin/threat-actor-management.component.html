@@ -1,0 +1,111 @@
+<section class="panel table-panel">
+  <div class="panel-title">
+    <div>
+      <h2>Threat Actor Management</h2>
+      <p>Create and edit intelligence records used across incident reporting.</p>
+    </div>
+    <div class="action-stack">
+      <input
+        class="table-search"
+        type="search"
+        placeholder="Search actors"
+        [value]="searchTerm"
+        (input)="onSearchInput($event)"
+      >
+      <button class="button small" type="button" (click)="openCreate()">Add Actor</button>
+    </div>
+  </div>
+
+  <div class="responsive-table">
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Status</th>
+          <th>Origin Country</th>
+          <th>Tactics</th>
+          <th>Threat Level</th>
+          <th>Created</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        @if (actors$ | async; as actors) {
+          @for (actor of filteredActors(actors); track actor.id) {
+            <tr>
+              <td>
+                <strong>{{ actor.name }}</strong>
+              </td>
+              <td><span class="actor-chip">{{ actor.status }}</span></td>
+              <td>{{ actor.originCountry }}</td>
+              <td>{{ actor.tactics }}</td>
+              <td><span class="severity-pill" [ngClass]="severityClass(actor.threatLevel)">{{ actor.threatLevel }}</span></td>
+              <td class="mono">{{ actor.createdAt | date:'mediumDate' }}</td>
+              <td class="actions-cell">
+                <button class="button small" type="button" (click)="openEdit(actor)">Edit</button>
+              </td>
+            </tr>
+          }
+        }
+      </tbody>
+    </table>
+  </div>
+</section>
+
+@if (isModalOpen) {
+  <div class="modal-backdrop" role="presentation">
+    <section class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="threat-actor-title">
+      <div class="panel-title">
+        <div>
+          <h2 id="threat-actor-title">{{ editingActorId ? 'Edit Threat Actor' : 'Add Threat Actor' }}</h2>
+          <p>Keep the intelligence record aligned with the active campaign profile.</p>
+        </div>
+        <button class="button ghost small" type="button" (click)="close()">Close</button>
+      </div>
+
+      <form class="form-panel" [formGroup]="form" (ngSubmit)="submit()">
+        <label class="field">
+          <span>Name</span>
+          <input type="text" formControlName="name" placeholder="Silent Jackal">
+          @if (fieldError('name')) {
+            <small>Name is required and may only use safe punctuation.</small>
+          }
+        </label>
+
+        <div class="field-row">
+          <label class="field">
+            <span>Status</span>
+            <select formControlName="status">
+              @for (status of statuses; track status) {
+                <option [value]="status">{{ status }}</option>
+              }
+            </select>
+          </label>
+
+          <label class="field">
+            <span>Threat Level</span>
+            <select formControlName="threatLevel">
+              @for (level of threatLevels; track level) {
+                <option [value]="level">{{ level }}</option>
+              }
+            </select>
+          </label>
+        </div>
+
+        <label class="field">
+          <span>Origin Country</span>
+          <input type="text" formControlName="originCountry" placeholder="Unknown">
+        </label>
+
+        <label class="field">
+          <span>Tactics</span>
+          <textarea rows="4" formControlName="tactics" placeholder="Credential stuffing, lateral movement, phishing."></textarea>
+        </label>
+
+        <button class="button primary wide" type="submit" [disabled]="isSaving">
+          {{ isSaving ? 'Saving...' : (editingActorId ? 'Save Changes' : 'Create Actor') }}
+        </button>
+      </form>
+    </section>
+  </div>
+}

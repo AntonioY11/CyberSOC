@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import secrets
 import string
 
@@ -22,12 +23,16 @@ from soc.serializers import (
     InviteUserResponseSerializer,
     InviteUserSerializer,
     IncidentLogSerializer,
+    IncidentAssignmentSerializer,
     IncidentSerializer,
+    IncidentStatusUpdateSerializer,
     SystemSerializer,
     ThreatActorSerializer,
     UserSerializer,
 )
 
+
+logger = logging.getLogger(__name__)
 
 TEMPORARY_PASSWORD_ALPHABET = string.ascii_letters + string.digits + "!@#$%^&*()-_=+"
 
@@ -42,6 +47,10 @@ def create_audit_log(actor: User, action_type: str, target_identifier: str) -> N
         action_type=action_type,
         target_identifier=target_identifier,
     )
+
+
+def incident_actor_name(user: User) -> str:
+    return user.name or user.username
 
 
 class LoginView(APIView):
@@ -142,6 +151,19 @@ class UserViewSet(ModelViewSet):
         create_audit_log(self.request.user, "USER_DELETED", target_identifier)
 
 
+class AdminUserViewSet(UserViewSet):
+    permission_classes = [IsAdminUser]
+
+    def get_queryset(self):
+        return (
+            super()
+            .get_queryset()
+            .filter(role=User.Role.ANALYST, is_active=True)
+            .exclude(pk=self.request.user.pk)
+            .order_by("name")
+        )
+
+
 class SystemViewSet(ModelViewSet):
     queryset = System.objects.all().order_by("id")
     serializer_class = SystemSerializer
@@ -168,6 +190,35 @@ class ThreatActorViewSet(ModelViewSet):
     permission_classes = [IsAuthenticated]
     filterset_fields = ["origin_country", "threat_level"]
 
+    def perform_create(self, serializer):
+        threat_actor = serializer.save()
+        if self.request.user.role == User.Role.ANALYST:
+            try:
+                create_audit_log(self.request.user, "THREAT_ACTOR_CREATED", threat_actor.name)
+            except Exception:
+                logger.exception("Failed to write audit log for threat actor %s", threat_actor.name)
+
+
+class AdminThreatActorViewSet(ModelViewSet):
+    queryset = ThreatActor.objects.all().order_by("name")
+    serializer_class = ThreatActorSerializer
+    permission_classes = [IsAdminUser]
+    http_method_names = ["get", "post", "patch", "head", "options"]
+
+    def perform_create(self, serializer):
+        threat_actor = serializer.save()
+        try:
+            create_audit_log(self.request.user, "THREAT_ACTOR_CREATED", threat_actor.name)
+        except Exception:
+            logger.exception("Failed to write audit log for threat actor %s", threat_actor.name)
+
+    def perform_update(self, serializer):
+        threat_actor = serializer.save()
+        try:
+            create_audit_log(self.request.user, "THREAT_ACTOR_EDITED", threat_actor.name)
+        except Exception:
+            logger.exception("Failed to write audit log for threat actor %s", threat_actor.name)
+
 
 class IncidentViewSet(ModelViewSet):
     queryset = Incident.objects.all().order_by("-id")
@@ -176,19 +227,149 @@ class IncidentViewSet(ModelViewSet):
     parser_classes = [MultiPartParser, FormParser, JSONParser]
     filterset_fields = ["status", "severity", "is_true_positive", "system", "assigned_to", "discovery_date"]
 
-    @action(detail=True, methods=["patch"])
+    def build_incident_payload(self, incident: Incident, request) -> dict:
+        system_data = SystemSerializer(incident.system, context={"request": request}).data
+        assigned_to_data = None
+        if incident.assigned_to:
+            assigned_to_data = UserSerializer(incident.assigned_to, context={"request": request}).data
+
+        actors_data = ThreatActorSerializer(incident.actors.all(), many=True, context={"request": request}).data
+        logs_data = IncidentLogSerializer(incident.logs.all(), many=True, context={"request": request}).data
+
+        evidence_image_url = None
+        if incident.evidence_image:
+            evidence_image_url = request.build_absolute_uri(incident.evidence_image.url) if request else incident.evidence_image.url
+
+        forensic_report_url = None
+        if incident.forensic_report:
+            forensic_report_url = request.build_absolute_uri(incident.forensic_report.url) if request else incident.forensic_report.url
+
+        return {
+            "id": incident.id,
+            "title": incident.title,
+            "description": incident.description,
+            "discovery_date": incident.discovery_date.isoformat(),
+            "status": incident.status,
+            "severity": incident.severity,
+            "resolution_summary": incident.resolution_summary,
+            "is_true_positive": incident.is_true_positive,
+            "evidence_image": incident.evidence_image.name if incident.evidence_image else None,
+            "forensic_report": incident.forensic_report.name if incident.forensic_report else None,
+            "evidence_image_url": evidence_image_url,
+            "forensic_report_url": forensic_report_url,
+            "system": system_data,
+            "system_detail": system_data,
+            "assigned_to": assigned_to_data,
+            "assigned_to_detail": assigned_to_data,
+            "actors": actors_data,
+            "actors_detail": actors_data,
+            "logs": logs_data,
+        }
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        try:
+            self.perform_create(serializer)
+        except Exception:
+            if serializer.instance is None:
+                raise
+
+            return Response(self.build_incident_payload(serializer.instance, request), status=status.HTTP_201_CREATED)
+
+        return Response(self.build_incident_payload(serializer.instance, request), status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=["patch"], url_path="update-status")
+    def update_status(self, request, pk=None):
+        incident = self.get_object()
+        serializer = IncidentStatusUpdateSerializer(instance=incident, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+
+        data = serializer.validated_data
+        updated_fields = []
+        old_status = incident.status
+        old_severity = incident.severity
+
+        if "status" in data:
+            new_status = data["status"]
+            if new_status == Incident.Status.RESOLVED and request.user.role != User.Role.ADMIN and incident.assigned_to_id != request.user.id:
+                return Response({"detail": "Only the assigned analyst or an admin can resolve an incident."}, status=status.HTTP_403_FORBIDDEN)
+            incident.status = new_status
+            if old_status != new_status:
+                updated_fields.append(("status", old_status, new_status))
+
+        if "severity" in data:
+            new_severity = data["severity"]
+            incident.severity = new_severity
+            if old_severity != new_severity:
+                updated_fields.append(("severity", old_severity, new_severity))
+
+        if "resolution_summary" in data:
+            incident.resolution_summary = data["resolution_summary"]
+
+        incident.save()
+
+        actor_name = incident_actor_name(request.user)
+        incident_identifier = f"Incident {incident.id} ({incident.title})"
+        for field_name, old_value, new_value in updated_fields:
+            create_audit_log(
+                request.user,
+                f"INCIDENT_{field_name.upper()}_CHANGED",
+                f"{actor_name} changed {field_name} from {old_value} to {new_value} on {incident_identifier}",
+            )
+
+        return Response(self.build_incident_payload(incident, request))
+
+    @action(detail=True, methods=["post"])
     def claim(self, request, pk=None):
         incident = self.get_object()
+
+        if request.user.role != User.Role.ANALYST:
+            return Response({"detail": "Only analysts can claim incidents."}, status=status.HTTP_403_FORBIDDEN)
+
         if incident.assigned_to_id:
             return Response({"detail": "Incident is already assigned."}, status=status.HTTP_400_BAD_REQUEST)
 
+        if incident.status != Incident.Status.NEW:
+            return Response({"detail": "Only new incidents can be claimed."}, status=status.HTTP_400_BAD_REQUEST)
+
         incident.assigned_to = request.user
-        if incident.status == Incident.Status.NEW:
-            incident.status = Incident.Status.ASSIGNED
+        incident.status = Incident.Status.ASSIGNED
         incident.save()
 
-        serializer = self.get_serializer(incident)
-        return Response(serializer.data)
+        create_audit_log(
+            request.user,
+            "INCIDENT_CLAIMED",
+            f"Incident #{incident.id} claimed by Analyst {incident.assigned_to.name or incident.assigned_to.username}",
+        )
+
+        return Response(self.build_incident_payload(incident, request))
+
+    @action(detail=True, methods=["post"], url_path="assign-to-analyst", permission_classes=[IsAdminUser])
+    def assign_to_analyst(self, request, pk=None):
+        incident = self.get_object()
+        if request.user.role != User.Role.ADMIN:
+            return Response({"detail": "Only admins can dispatch incidents."}, status=status.HTTP_403_FORBIDDEN)
+
+        if incident.status == Incident.Status.RESOLVED:
+            return Response({"detail": "Resolved incidents cannot be reassigned."}, status=status.HTTP_400_BAD_REQUEST)
+
+        serializer = IncidentAssignmentSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        analyst = serializer.validated_data["user"]
+        incident.assigned_to = analyst
+        incident.status = Incident.Status.ASSIGNED
+        incident.save()
+
+        create_audit_log(
+            request.user,
+            "INCIDENT_ASSIGNED",
+            f"Incident #{incident.id} assigned to Analyst {analyst.name or analyst.username}",
+        )
+
+        return Response(self.build_incident_payload(incident, request))
 
 
 class IncidentLogViewSet(ReadOnlyModelViewSet):
