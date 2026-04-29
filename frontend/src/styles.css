@@ -587,9 +587,18 @@ td span {
 }
 
 .actions-cell {
-  display: flex;
-  gap: 8px;
-  justify-content: flex-end;
+  text-align: right;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.actions-cell > * {
+  display: inline-flex;
+  align-items: center;
+}
+
+.actions-cell > * + * {
+  margin-left: 8px;
 }
 
 .metadata-list {
@@ -1008,6 +1017,11 @@ progress::-webkit-progress-value {
   }
 
   .actions-cell {
-    justify-content: flex-start;
+    text-align: left;
+    white-space: normal;
+  }
+
+  .actions-cell > * + * {
+    margin-left: 8px;
   }
 }
