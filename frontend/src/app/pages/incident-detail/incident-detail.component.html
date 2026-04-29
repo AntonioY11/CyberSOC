@@ -110,12 +110,23 @@
           [value]="analystSearchTerm"
           (input)="analystSearchTerm = ($any($event.target).value)"
         >
-        <select [value]="selectedAnalystId" (change)="selectedAnalystId = $any($event.target).value">
-          <option value="">Select analyst</option>
-          @for (analyst of filteredAnalysts(); track analyst.id) {
-            <option [value]="analyst.id">{{ analyst.name }} | {{ analyst.email }}</option>
+        <div class="analyst-picker">
+          @if (filteredAnalysts().length) {
+            @for (analyst of filteredAnalysts(); track analyst.id) {
+              <button
+                type="button"
+                class="analyst-option"
+                [class.active]="selectedAnalystId === analyst.id"
+                (click)="selectAnalyst(analyst.id)"
+              >
+                <strong>{{ analyst.name }}</strong>
+                <small>{{ analyst.email }}</small>
+              </button>
+            }
+          } @else {
+            <p class="empty-state compact">No active analysts available.</p>
           }
-        </select>
+        </div>
         <button class="button primary" type="button" [disabled]="!selectedAnalystId" (click)="assignIncident()">Assign</button>
       </div>
     </section>

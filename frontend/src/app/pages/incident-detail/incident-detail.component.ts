@@ -1,6 +1,6 @@
 import { AsyncPipe, DatePipe, NgClass } from '@angular/common';
 import { Component, DestroyRef, OnInit, inject } from '@angular/core';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { combineLatest, map } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
@@ -17,6 +17,7 @@ import { UserService } from '../../core/services/user.service';
 })
 export class IncidentDetailComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private readonly incidentService = inject(IncidentService);
   private readonly authService = inject(AuthService);
   private readonly userService = inject(UserService);
@@ -123,6 +124,10 @@ export class IncidentDetailComponent implements OnInit {
     return query ? eligibleAnalysts.filter((analyst) => analyst.name.toLowerCase().includes(query)) : eligibleAnalysts;
   }
 
+  selectAnalyst(analystId: string): void {
+    this.selectedAnalystId = analystId;
+  }
+
   claimIncident(): void {
     if (!this.currentIncident || !this.canClaimIncident) {
       return;
@@ -176,6 +181,7 @@ export class IncidentDetailComponent implements OnInit {
       .subscribe({
         next: () => {
           this.notifications.notify('Incident status updated.');
+          void this.router.navigate(['/incidents']);
           this.submitting = false;
         },
         error: () => {

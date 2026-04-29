@@ -492,10 +492,52 @@ td span,
 
 .dispatcher-controls {
   display: grid;
-  grid-template-columns: minmax(220px, 1fr) minmax(220px, 1fr) auto;
+  grid-template-columns: minmax(220px, 1fr) minmax(260px, 1.3fr) auto;
   gap: 10px;
   align-items: center;
   width: min(100%, 760px);
+}
+
+.analyst-picker {
+  display: grid;
+  gap: 8px;
+  max-height: 220px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(2, 6, 23, 0.26);
+  overflow: auto;
+}
+
+.analyst-option {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: var(--text);
+  background: rgba(15, 23, 42, 0.72);
+  text-align: left;
+  cursor: pointer;
+}
+
+.analyst-option strong,
+.analyst-option small {
+  display: block;
+}
+
+.analyst-option small {
+  color: var(--muted);
+}
+
+.analyst-option.active {
+  border-color: rgba(34, 211, 238, 0.72);
+  background: rgba(34, 211, 238, 0.12);
+  box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.18) inset;
+}
+
+.empty-state.compact {
+  margin: 0;
 }
 
 @keyframes severity-pulse {

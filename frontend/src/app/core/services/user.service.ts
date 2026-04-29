@@ -21,8 +21,8 @@ export class UserService {
   }
 
   loadAdminAnalysts(): Observable<SocUser[]> {
-    return this.cyber.get<BackendUser[]>('/admin/users/').pipe(
-      map((users) => users.map(mapUser).filter((user) => user.role === 'ANALYST')),
+    return this.loadUsers().pipe(
+      map((users) => users.filter((user) => user.role === 'ANALYST')),
       catchError(() => of([]))
     );
   }
