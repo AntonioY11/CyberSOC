@@ -117,6 +117,7 @@ class Incident(models.Model):
         default=VALIDATION_STATUS.PENDING,
     )
     resolved_at = models.DateTimeField(null=True, blank=True)
+    is_deleted = models.BooleanField(default=False)
     is_true_positive = models.BooleanField(default=False)
     resolution_summary = models.TextField(blank=True, default="")
     evidence_image = models.ImageField(upload_to="incidents/images/", null=True, blank=True)

@@ -51,6 +51,8 @@ export class IncidentDetailComponent implements OnInit {
   currentIncident: Incident | null = null;
   canClaimIncident = false;
   canManageStatus = false;
+  canDeleteIncident = false;
+  pendingDeleteIncident = false;
   submitting = false;
 
   ngOnInit(): void {
@@ -63,12 +65,15 @@ export class IncidentDetailComponent implements OnInit {
           this.currentIncident = null;
           this.canClaimIncident = false;
           this.canManageStatus = false;
+          this.canDeleteIncident = false;
+          this.pendingDeleteIncident = false;
           return;
         }
 
         const incidentChanged = this.currentIncident?.id !== incident.id;
         this.currentIncident = incident;
         this.canManageStatus = incident.assignedTo?.id === user?.id;
+        this.canDeleteIncident = user?.role === 'ADMIN';
         this.canClaimIncident = incident.status === 'NEW' && !incident.assignedTo && !!user;
 
         if (!incidentChanged && this.form.dirty) {
@@ -155,6 +160,37 @@ export class IncidentDetailComponent implements OnInit {
       next: () => {
         this.notifications.notify('Incident reopened successfully.');
         this.submitting = false;
+      },
+      error: () => {
+        this.submitting = false;
+      }
+    });
+  }
+
+  deleteIncident(): void {
+    if (!this.currentIncident || !this.canDeleteIncident) {
+      return;
+    }
+
+    this.pendingDeleteIncident = true;
+  }
+
+  cancelDeleteIncident(): void {
+    this.pendingDeleteIncident = false;
+  }
+
+  confirmDeleteIncident(): void {
+    if (!this.currentIncident || !this.canDeleteIncident) {
+      return;
+    }
+
+    this.submitting = true;
+    this.incidentService.deleteIncident(this.currentIncident.id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: () => {
+        this.notifications.notify('Incident soft-deleted.');
+        this.submitting = false;
+        this.pendingDeleteIncident = false;
+        void this.router.navigate(['/incidents']);
       },
       error: () => {
         this.submitting = false;

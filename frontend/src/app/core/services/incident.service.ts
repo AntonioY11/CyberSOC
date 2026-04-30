@@ -45,6 +45,10 @@ export class IncidentService {
     );
   }
 
+  deleteIncident(incidentId: string): Observable<void> {
+    return this.cyber.delete<void>(`/incidents/${incidentId}/`).pipe(tap(() => this.removeIncident(incidentId)));
+  }
+
   updateIncidentStatus(incidentId: string, draft: IncidentStatusUpdateDraft): Observable<Incident> {
     const resolutionNote = draft.resolutionSummary?.trim();
     const payload = {
@@ -93,5 +97,9 @@ export class IncidentService {
     this.incidentsSubject.next(
       this.incidentsSubject.value.map((incident) => (incident.id === updatedIncident.id ? updatedIncident : incident))
     );
+  }
+
+  private removeIncident(incidentId: string): void {
+    this.incidentsSubject.next(this.incidentsSubject.value.filter((incident) => incident.id !== incidentId));
   }
 }

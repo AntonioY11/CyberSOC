@@ -54,6 +54,7 @@ export interface BackendIncident {
   severity: IncidentSeverity;
   validation_status: 'PENDING' | 'TRUE_POSITIVE' | 'FALSE_POSITIVE' | 'BENIGN_POSITIVE';
   resolved_at: string | null;
+  is_deleted?: boolean;
   is_true_positive: boolean;
   resolution_summary: string;
   evidence_image: string | null;

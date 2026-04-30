@@ -243,6 +243,15 @@ class IncidentViewSet(ModelViewSet):
     parser_classes = [MultiPartParser, FormParser, JSONParser]
     filterset_fields = ["status", "severity", "validation_status", "is_true_positive", "system", "assigned_to", "discovery_date"]
 
+    def get_queryset(self):
+        return super().get_queryset()
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        incidents = [incident for incident in queryset if not getattr(incident, "is_deleted", False)]
+        serializer = self.get_serializer(incidents, many=True)
+        return Response(serializer.data)
+
     def build_incident_payload(self, incident: Incident, request) -> dict:
         system_data = SystemSerializer(incident.system, context={"request": request}).data
         assigned_to_data = None
@@ -297,6 +306,20 @@ class IncidentViewSet(ModelViewSet):
             return Response(self.build_incident_payload(serializer.instance, request), status=status.HTTP_201_CREATED)
 
         return Response(self.build_incident_payload(serializer.instance, request), status=status.HTTP_201_CREATED)
+
+    def destroy(self, request, *args, **kwargs):
+        incident = self.get_object()
+        if incident.is_deleted:
+            return Response(status=status.HTTP_204_NO_CONTENT)
+
+        incident.is_deleted = True
+        incident.save(update_fields=["is_deleted"])
+        create_audit_log(
+            request.user,
+            "INCIDENT_DELETED",
+            f"Incident #{incident.id} was soft-deleted by Admin {incident_actor_name(request.user)}",
+        )
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
     def _reject_if_frozen(self, incident: Incident):
         if incident.status == Incident.Status.RESOLVED:

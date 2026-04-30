@@ -73,6 +73,7 @@ export interface Incident {
   severity: IncidentSeverity;
   validationStatus: IncidentValidationStatus;
   resolvedAt: string | null;
+  isDeleted?: boolean;
   isTruePositive: boolean;
   resolutionSummary: string;
   evidenceImage: string | null;

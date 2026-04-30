@@ -5,8 +5,36 @@
       <h1>{{ incident.title }}</h1>
       <p>{{ incident.description }}</p>
     </div>
-    <a class="button ghost" routerLink="/incidents">Back to Queue</a>
+    <div class="header-actions">
+      @if (canDeleteIncident) {
+        <button class="button danger" type="button" (click)="deleteIncident()" [disabled]="submitting">
+          Delete Incident
+        </button>
+      }
+      <a class="button ghost" routerLink="/incidents">Back to Queue</a>
+    </div>
   </section>
+
+  @if (pendingDeleteIncident) {
+    <div class="modal-backdrop" role="presentation">
+      <section class="confirm-card" role="dialog" aria-modal="true" aria-labelledby="delete-incident-title">
+        <span class="confirm-icon">!</span>
+        <div>
+          <h2 id="delete-incident-title">Are you sure?</h2>
+          <p>
+            This will soft-delete <strong>Incident #{{ incident.id }}</strong> from the active queue.
+            The audit trail will stay intact.
+          </p>
+        </div>
+        <div class="confirm-actions">
+          <button class="button ghost" type="button" (click)="cancelDeleteIncident()">Cancel</button>
+          <button class="button danger" type="button" [disabled]="submitting" (click)="confirmDeleteIncident()">
+            {{ submitting ? 'Deleting...' : 'Delete incident' }}
+          </button>
+        </div>
+      </section>
+    </div>
+  }
 
   @if (isLocked()) {
     <section class="panel closed-banner">
