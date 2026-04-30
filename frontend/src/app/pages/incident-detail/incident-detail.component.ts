@@ -66,9 +66,21 @@ export class IncidentDetailComponent implements OnInit {
           return;
         }
 
+        const incidentChanged = this.currentIncident?.id !== incident.id;
         this.currentIncident = incident;
         this.canManageStatus = incident.assignedTo?.id === user?.id;
         this.canClaimIncident = incident.status === 'NEW' && !incident.assignedTo && !!user;
+
+        if (!incidentChanged && this.form.dirty) {
+          if (this.canManageStatus && !this.isLocked()) {
+            this.form.enable({ emitEvent: false });
+          } else {
+            this.form.disable({ emitEvent: false });
+          }
+
+          return;
+        }
+
         this.form.reset(
           {
             status: incident.status,
