@@ -38,8 +38,24 @@ export class IncidentService {
     );
   }
 
+  reopenIncident(incidentId: string): Observable<Incident> {
+    return this.cyber.post<BackendIncident>(`/incidents/${incidentId}/reopen/`, {}).pipe(
+      map(mapIncident),
+      tap((incident) => this.replaceIncident(incident))
+    );
+  }
+
   updateIncidentStatus(incidentId: string, draft: IncidentStatusUpdateDraft): Observable<Incident> {
-    return this.cyber.patch<BackendIncident>(`/incidents/${incidentId}/update-status/`, draft).pipe(
+    const resolutionNote = draft.resolutionSummary?.trim();
+    const payload = {
+      status: draft.status,
+      severity: draft.severity,
+      validation_status: draft.validationStatus,
+      resolution_note: resolutionNote,
+      resolution_summary: resolutionNote
+    };
+
+    return this.cyber.patch<BackendIncident>(`/incidents/${incidentId}/update-status/`, payload).pipe(
       map(mapIncident),
       tap((incident) => this.replaceIncident(incident))
     );

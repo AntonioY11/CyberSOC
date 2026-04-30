@@ -37,6 +37,33 @@ def normalize_threat_actor_name(value: str) -> str:
     return normalized
 
 
+def validate_incident_workflow_state(
+    *,
+    status: str,
+    assigned_to,
+    validation_status: str | None,
+    resolution_note: str,
+):
+    if status == Incident.Status.NEW:
+        if assigned_to is not None:
+            raise serializers.ValidationError({"detail": "New incidents must remain unassigned until they are claimed."})
+    elif assigned_to is None:
+        raise serializers.ValidationError({"detail": "Assigned incidents must have an owner."})
+
+    if status == Incident.Status.RESOLVED:
+        if not resolution_note:
+            raise serializers.ValidationError({"detail": "Resolution note is required when resolving an incident."})
+        if validation_status in {None, Incident.ValidationStatus.PENDING}:
+            raise serializers.ValidationError({"detail": "Final validation status is required when resolving an incident."})
+    elif validation_status not in {None, Incident.ValidationStatus.PENDING}:
+        raise serializers.ValidationError({"detail": "Validation status can only be changed when resolving an incident."})
+
+    return {
+        "validation_status": validation_status or Incident.ValidationStatus.PENDING,
+        "resolution_note": resolution_note,
+    }
+
+
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
@@ -143,6 +170,9 @@ class IncidentSerializer(serializers.ModelSerializer):
     assigned_to_detail = UserSerializer(source="assigned_to", read_only=True)
     logs = IncidentLogSerializer(many=True, read_only=True)
     resolution_summary = serializers.CharField(required=False, allow_blank=True)
+    resolution_note = serializers.CharField(required=False, allow_blank=True, write_only=True)
+    validation_status = serializers.ChoiceField(choices=Incident.ValidationStatus.choices, required=False)
+    resolved_at = serializers.DateTimeField(read_only=True)
     evidence_image_url = serializers.SerializerMethodField()
     forensic_report_url = serializers.SerializerMethodField()
 
@@ -155,8 +185,11 @@ class IncidentSerializer(serializers.ModelSerializer):
             "discovery_date",
             "status",
             "severity",
+            "validation_status",
+            "resolved_at",
             "is_true_positive",
             "resolution_summary",
+            "resolution_note",
             "evidence_image",
             "forensic_report",
             "evidence_image_url",
@@ -176,6 +209,30 @@ class IncidentSerializer(serializers.ModelSerializer):
 
     def validate_resolution_summary(self, value):
         return value.strip()
+
+    def validate_resolution_note(self, value):
+        return value.strip()
+
+    def validate(self, attrs):
+        status = attrs.get("status", getattr(self.instance, "status", Incident.Status.NEW))
+        assigned_to = attrs.get("assigned_to", getattr(self.instance, "assigned_to", None))
+        validation_status = attrs.get("validation_status", getattr(self.instance, "validation_status", None))
+        resolution_note = attrs.get(
+            "resolution_note",
+            attrs.get("resolution_summary", getattr(self.instance, "resolution_summary", "")),
+        )
+
+        validate_incident_workflow_state(
+            status=status,
+            assigned_to=assigned_to,
+            validation_status=validation_status,
+            resolution_note=str(resolution_note).strip(),
+        )
+
+        if status != Incident.Status.RESOLVED:
+            attrs["validation_status"] = Incident.ValidationStatus.PENDING
+
+        return attrs
 
     def _link_or_create_threat_actor(self, incident: Incident, threat_actor_name: str) -> None:
         actor = ThreatActor.objects.filter(name__iexact=threat_actor_name).first()
@@ -213,6 +270,8 @@ class IncidentSerializer(serializers.ModelSerializer):
         system = validated_data["system"]
         validated_data["status"] = Incident.Status.NEW
         validated_data["severity"] = severity_for_criticality(system.criticality)
+        validated_data["validation_status"] = Incident.ValidationStatus.PENDING
+        validated_data["is_true_positive"] = False
         incident = Incident.objects.create(**validated_data)
 
         if actors:
@@ -248,23 +307,42 @@ class IncidentSerializer(serializers.ModelSerializer):
 class IncidentStatusUpdateSerializer(serializers.Serializer):
     status = serializers.ChoiceField(choices=Incident.Status.choices, required=False)
     severity = serializers.ChoiceField(choices=Incident.Severity.choices, required=False)
+    validation_status = serializers.ChoiceField(choices=Incident.ValidationStatus.choices, required=False)
     resolution_summary = serializers.CharField(required=False, allow_blank=True)
+    resolution_note = serializers.CharField(required=False, allow_blank=True)
 
     def validate_resolution_summary(self, value):
         return value.strip()
 
+    def validate_resolution_note(self, value):
+        return value.strip()
+
+    def validate_resolution_note(self, value):
+        return value.strip()
+
     def validate(self, attrs):
         if not attrs:
-            raise serializers.ValidationError("Provide a status or severity change.")
+            raise serializers.ValidationError("Provide a workflow change.")
 
         incident = self.instance
-        summary = attrs.get("resolution_summary", getattr(incident, "resolution_summary", ""))
+        request = self.context.get("request")
+        user = getattr(request, "user", None)
+        resolution_note = str(attrs.get("resolution_note", attrs.get("resolution_summary", getattr(incident, "resolution_summary", "")))).strip()
+        status = attrs.get("status", incident.status)
+        validation_status = attrs.get("validation_status", incident.validation_status)
 
-        if attrs.get("status") in {Incident.Status.ASSIGNED, Incident.Status.MITIGATED, Incident.Status.RESOLVED} and not incident.assigned_to_id:
-            raise serializers.ValidationError({"status": "Assign the incident before moving it to this status."})
+        if user and getattr(user, "is_authenticated", False) and incident.assigned_to_id and incident.assigned_to_id != user.id:
+            raise serializers.ValidationError({"detail": "Only the assigned owner can update this incident."})
 
-        if attrs.get("status") == Incident.Status.RESOLVED and not summary:
-            raise serializers.ValidationError({"resolution_summary": "Resolution summary is required when resolving an incident."})
+        validate_incident_workflow_state(
+            status=status,
+            assigned_to=incident.assigned_to,
+            validation_status=validation_status,
+            resolution_note=resolution_note,
+        )
+
+        if status != Incident.Status.RESOLVED:
+            attrs["validation_status"] = Incident.ValidationStatus.PENDING
 
         return attrs
 

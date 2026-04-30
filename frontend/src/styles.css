@@ -490,6 +490,50 @@ td span,
   background: rgba(2, 6, 23, 0.22);
 }
 
+.closed-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+  border: 1px solid rgba(250, 204, 21, 0.34);
+  background: linear-gradient(135deg, rgba(250, 204, 21, 0.12), rgba(2, 6, 23, 0.24));
+}
+
+.case-closed-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  margin-bottom: 10px;
+  padding: 0 10px;
+  border: 1px solid rgba(250, 204, 21, 0.42);
+  border-radius: 999px;
+  color: #fef3c7;
+  background: rgba(250, 204, 21, 0.14);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.case-closed-badge.muted {
+  margin-bottom: 0;
+}
+
+.resolution-gate {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border: 1px dashed rgba(250, 204, 21, 0.32);
+  border-radius: 8px;
+  background: rgba(250, 204, 21, 0.08);
+}
+
+.resolution-gate p {
+  margin: 0;
+  color: var(--muted);
+}
+
 .dispatcher-controls {
   display: grid;
   grid-template-columns: minmax(220px, 1fr) minmax(260px, 1.3fr) auto;

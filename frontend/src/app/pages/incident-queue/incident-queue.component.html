@@ -47,7 +47,7 @@
               </td>
               <td>{{ incident.discoveryDate | date:'mediumDate' }}</td>
               <td class="actions-cell">
-                @if (!incident.assignedTo && (user$ | async)?.role === 'ANALYST') {
+                @if (!incident.assignedTo && ((user$ | async)?.role === 'ANALYST' || (user$ | async)?.role === 'ADMIN')) {
                   <button class="button small" type="button" (click)="claim(incident)">Claim Ticket</button>
                 }
                 <a class="button ghost small" [routerLink]="['/incidents', incident.id]">Open</a>

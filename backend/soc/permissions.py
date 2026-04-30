@@ -27,9 +27,6 @@ class IncidentAccessPermission(BasePermission):
         return request.user.role in {"ADMIN", "ANALYST"}
 
     def has_object_permission(self, request, view, obj) -> bool:
-        if request.user.role == "ADMIN":
-            return True
-
         if view.action in {"update", "partial_update", "update_status"}:
             return obj.assigned_to_id == request.user.id
 

@@ -16,6 +16,7 @@ TRACKED_FIELDS = [
     "discovery_date",
     "status",
     "severity",
+    "validation_status",
     "resolution_summary",
     "is_true_positive",
     "system_id",
@@ -63,7 +64,7 @@ def create_incident_audit_log(sender, instance: Incident, created: bool, **kwarg
         action = "Incident Created"
         message = (
             f"Incident created with status={instance.status}, severity={instance.severity}, "
-            f"true_positive={instance.is_true_positive}."
+            f"validation_status={instance.validation_status}, true_positive={instance.is_true_positive}."
         )
     else:
         changes = []

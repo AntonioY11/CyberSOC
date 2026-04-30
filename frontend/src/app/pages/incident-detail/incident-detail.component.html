@@ -8,6 +8,24 @@
     <a class="button ghost" routerLink="/incidents">Back to Queue</a>
   </section>
 
+  @if (isLocked()) {
+    <section class="panel closed-banner">
+      <div>
+        <span class="case-closed-badge">Case Closed</span>
+        <h2>Read-only incident</h2>
+        <p>This incident is resolved and frozen. Reopen it as an admin to make any further changes.</p>
+        @if (incident.resolvedAt) {
+          <small>Resolved at {{ incident.resolvedAt | date:'medium' }}</small>
+        }
+      </div>
+      @if (canReopen()) {
+        <button class="button primary" type="button" (click)="reopenIncident()">
+          {{ submitting ? 'Reopening...' : 'Reopen Case' }}
+        </button>
+      }
+    </section>
+  }
+
   <section class="detail-grid">
     <article class="panel metadata-card">
       <div class="panel-title">
@@ -23,9 +41,19 @@
           <dt>Status</dt>
           <dd>{{ incident.status }}</dd>
         </div>
+        <div>
+          <dt>Validation Status</dt>
+          <dd>{{ incident.validationStatus }}</dd>
+        </div>
+        @if (incident.resolvedAt) {
+          <div>
+            <dt>Resolved At</dt>
+            <dd>{{ incident.resolvedAt | date:'medium' }}</dd>
+          </div>
+        }
         @if (incident.resolutionSummary) {
           <div>
-            <dt>Resolution Summary</dt>
+            <dt>Resolution Note</dt>
             <dd>{{ incident.resolutionSummary }}</dd>
           </div>
         }
@@ -34,8 +62,8 @@
           <dd>{{ incident.discoveryDate | date:'fullDate' }}</dd>
         </div>
         <div>
-          <dt>True Positive</dt>
-          <dd>{{ incident.isTruePositive ? 'Confirmed' : 'Pending validation' }}</dd>
+          <dt>Validation</dt>
+          <dd>{{ incident.isTruePositive ? 'Confirmed' : 'Pending classification' }}</dd>
         </div>
         <div>
           <dt>Assigned Analyst</dt>
@@ -90,54 +118,18 @@
     <section class="panel ownership-banner">
       <div>
         <h2>Claim this incident</h2>
-        <p>You can take ownership immediately and start updating the incident lifecycle.</p>
+        <p>Admins and analysts can claim new incidents to become the owner and begin triage.</p>
       </div>
       <button class="button primary" type="button" (click)="claimIncident()">Claim Incident</button>
     </section>
   }
 
-  @if (isAdmin) {
-    <section class="panel ownership-banner">
-      <div>
-        <h2>Dispatch to analyst</h2>
-        <p>Assign this case to an active analyst and set ownership in one step.</p>
-      </div>
-      <div class="dispatcher-controls">
-        <input
-          class="table-search"
-          type="search"
-          placeholder="Search analysts"
-          [value]="analystSearchTerm"
-          (input)="analystSearchTerm = ($any($event.target).value)"
-        >
-        <div class="analyst-picker">
-          @if (filteredAnalysts().length) {
-            @for (analyst of filteredAnalysts(); track analyst.id) {
-              <button
-                type="button"
-                class="analyst-option"
-                [class.active]="selectedAnalystId === analyst.id"
-                (click)="selectAnalyst(analyst.id)"
-              >
-                <strong>{{ analyst.name }}</strong>
-                <small>{{ analyst.email }}</small>
-              </button>
-            }
-          } @else {
-            <p class="empty-state compact">No active analysts available.</p>
-          }
-        </div>
-        <button class="button primary" type="button" [disabled]="!selectedAnalystId" (click)="assignIncident()">Assign</button>
-      </div>
-    </section>
-  }
-
-  @if (canManageStatus) {
+  @if (canManageStatus || isLocked()) {
     <section class="panel">
       <div class="panel-title">
         <div>
-          <h2>Status control</h2>
-          <p>Update the incident lifecycle and severity from one place.</p>
+          <h2>Triage section</h2>
+          <p>Only the owner can move the incident through the lifecycle and set validation status.</p>
         </div>
         <span class="severity-pill" [ngClass]="severityClass(form.controls.severity.value)">{{ form.controls.severity.value }}</span>
       </div>
@@ -147,7 +139,7 @@
           <span>Status Stepper</span>
           <div class="segmented" role="group" aria-label="Incident status stepper">
             @for (status of statuses; track status) {
-              <button type="button" [class.active]="form.controls.status.value === status" [disabled]="statusButtonDisabled(status)" (click)="selectStatus(status)">{{ status }}</button>
+              <button type="button" [class.active]="form.controls.status.value === status" [disabled]="statusButtonDisabled(status) || isLocked()" (click)="selectStatus(status)">{{ status }}</button>
             }
           </div>
         </div>
@@ -155,7 +147,7 @@
         <div class="field-row">
           <label class="field">
             <span>Severity</span>
-            <select formControlName="severity">
+            <select formControlName="severity" [disabled]="isLocked()">
               @for (severity of severities; track severity) {
                 <option [value]="severity">{{ severity }}</option>
               }
@@ -168,32 +160,58 @@
           </div>
         </div>
 
-        @if (form.controls.status.value === 'RESOLVED') {
+        <div class="field-row">
           <label class="field">
-            <span>Resolution Summary</span>
-            <textarea rows="4" formControlName="resolutionSummary" placeholder="Summarize the containment, eradication, and recovery outcome."></textarea>
+            <span>Validation Status</span>
+            <select formControlName="validationStatus" [disabled]="isLocked() || form.controls.status.value !== 'RESOLVED'">
+              @for (validationStatus of validationStatuses; track validationStatus) {
+                <option [value]="validationStatus">{{ validationStatus }}</option>
+              }
+            </select>
+            @if (form.controls.status.value !== 'RESOLVED') {
+              <small>Choose a final validation status when the incident is moved to RESOLVED.</small>
+            }
+          </label>
+
+          <div class="field">
+            <span>Validation badge</span>
+            <span class="severity-pill" [ngClass]="validationClass(form.controls.validationStatus.value)">{{ form.controls.validationStatus.value }}</span>
+          </div>
+        </div>
+
+        @if (form.controls.status.value === 'RESOLVED') {
+          <div class="resolution-gate">
+            <span class="case-closed-badge muted">Resolution Gate</span>
+            <p>Resolution note and validation status are mandatory before the case can be closed.</p>
+          </div>
+          <label class="field">
+            <span>Resolution Note</span>
+            <textarea rows="4" formControlName="resolutionSummary" [disabled]="isLocked()" placeholder="Summarize the containment, eradication, and recovery outcome."></textarea>
             @if (form.touched && form.hasError('resolutionSummaryRequired')) {
-              <small>Resolution summary is required before closing the incident.</small>
+              <small>Resolution note is required before closing the incident.</small>
+            }
+            @if (form.touched && form.hasError('validationStatusRequired')) {
+              <small>Pick a final validation status before closing the incident.</small>
             }
           </label>
         }
 
-        <button class="button primary wide" type="submit" [disabled]="submitting || !isEditable">
-          {{ submitting ? 'Saving...' : 'Save Incident Progress' }}
-        </button>
-
-        @if (!isEditable) {
-          <small>Only the assigned analyst or an admin can update status and severity.</small>
+        @if (!isLocked()) {
+          <button class="button primary wide" type="submit" [disabled]="submitting || !canManageStatus">
+            {{ submitting ? 'Saving...' : 'Save Incident Progress' }}
+          </button>
         }
+
+        <small>Only the incident owner can update status, severity, and validation.</small>
       </form>
     </section>
   }
 
-  @if (!canManageStatus && !canClaimIncident && !isAdmin) {
+  @if (!canManageStatus && !canClaimIncident && incident.assignedTo) {
     <section class="panel ownership-banner muted-banner">
       <div>
         <h2>Ownership locked</h2>
-        <p>This incident is assigned to another analyst. You can view the case data, but you cannot change status.</p>
+        <p>This incident is owned by another user. You can view the case data, but all triage controls are locked.</p>
       </div>
     </section>
   }

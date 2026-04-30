@@ -31,7 +31,7 @@ export class DashboardComponent implements OnInit {
         return statusMatches && severityMatches;
       });
       const activeIncidents = incidents.filter((incident) => incident.status !== 'RESOLVED');
-      const truePositiveCount = incidents.filter((incident) => incident.isTruePositive).length;
+      const truePositiveCount = incidents.filter((incident) => incident.validationStatus === 'TRUE_POSITIVE').length;
 
       return {
         filteredIncidents,

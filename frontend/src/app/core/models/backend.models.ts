@@ -52,6 +52,8 @@ export interface BackendIncident {
   discovery_date: string;
   status: IncidentStatus;
   severity: IncidentSeverity;
+  validation_status: 'PENDING' | 'TRUE_POSITIVE' | 'FALSE_POSITIVE' | 'BENIGN_POSITIVE';
+  resolved_at: string | null;
   is_true_positive: boolean;
   resolution_summary: string;
   evidence_image: string | null;

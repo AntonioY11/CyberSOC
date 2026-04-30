@@ -1,14 +1,20 @@
 import { AsyncPipe, DatePipe, NgClass } from '@angular/common';
 import { Component, DestroyRef, OnInit, inject } from '@angular/core';
+import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { combineLatest, map } from 'rxjs';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
-import { Incident, IncidentLog, IncidentSeverity, IncidentStatus, SocUser } from '../../core/models/soc.models';
+import {
+  Incident,
+  IncidentLog,
+  IncidentSeverity,
+  IncidentStatus,
+  IncidentValidationStatus,
+  SocUser
+} from '../../core/models/soc.models';
 import { AuthService } from '../../core/services/auth.service';
 import { IncidentService } from '../../core/services/incident.service';
 import { NotificationService } from '../../core/services/notification.service';
-import { UserService } from '../../core/services/user.service';
 
 @Component({
   selector: 'app-incident-detail',
@@ -20,7 +26,6 @@ export class IncidentDetailComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly incidentService = inject(IncidentService);
   private readonly authService = inject(AuthService);
-  private readonly userService = inject(UserService);
   private readonly notifications = inject(NotificationService);
   private readonly formBuilder = inject(FormBuilder);
   private readonly destroyRef = inject(DestroyRef);
@@ -31,62 +36,50 @@ export class IncidentDetailComponent implements OnInit {
   );
 
   readonly statuses: IncidentStatus[] = ['NEW', 'ASSIGNED', 'MITIGATED', 'RESOLVED'];
+  readonly validationStatuses: IncidentValidationStatus[] = ['PENDING', 'TRUE_POSITIVE', 'FALSE_POSITIVE', 'BENIGN_POSITIVE'];
   readonly severities: IncidentSeverity[] = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
   readonly form = this.formBuilder.nonNullable.group(
     {
       status: ['NEW' as IncidentStatus, Validators.required],
       severity: ['LOW' as IncidentSeverity, Validators.required],
+      validationStatus: ['PENDING' as IncidentValidationStatus, Validators.required],
       resolutionSummary: ['']
     },
-    { validators: [this.resolutionSummaryRequired.bind(this)] }
+    { validators: [this.workflowValidator.bind(this)] }
   );
 
   currentIncident: Incident | null = null;
-  isEditable = false;
-  isAdmin = false;
   canClaimIncident = false;
   canManageStatus = false;
-  analysts: SocUser[] = [];
-  analystSearchTerm = '';
-  selectedAnalystId = '';
   submitting = false;
 
   ngOnInit(): void {
     this.incidentService.loadIncidents().subscribe();
-    if (this.authService.currentUser?.role === 'ADMIN') {
-      this.userService.loadAdminAnalysts().subscribe((analysts) => {
-        const currentUserId = this.authService.currentUser?.id;
-        this.analysts = analysts.filter((analyst) => analyst.id !== currentUserId);
-      });
-    }
 
     combineLatest([this.incident$, this.user$])
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(([incident, user]) => {
         if (!incident) {
           this.currentIncident = null;
-          this.isEditable = false;
           this.canClaimIncident = false;
           this.canManageStatus = false;
           return;
         }
 
         this.currentIncident = incident;
-        this.isAdmin = user?.role === 'ADMIN';
-        this.canManageStatus = this.isAdmin || incident.assignedTo?.id === user?.id;
-        this.canClaimIncident = incident.status === 'NEW' && !incident.assignedTo && user?.role === 'ANALYST';
-        this.selectedAnalystId = incident.assignedTo?.id ?? this.selectedAnalystId;
+        this.canManageStatus = incident.assignedTo?.id === user?.id;
+        this.canClaimIncident = incident.status === 'NEW' && !incident.assignedTo && !!user;
         this.form.reset(
           {
             status: incident.status,
             severity: incident.severity,
+            validationStatus: incident.validationStatus,
             resolutionSummary: incident.resolutionSummary
           },
           { emitEvent: false }
         );
 
-        this.isEditable = this.canManageStatus;
-        if (this.isEditable) {
+        if (this.canManageStatus && !this.isLocked()) {
           this.form.enable({ emitEvent: false });
         } else {
           this.form.disable({ emitEvent: false });
@@ -105,6 +98,18 @@ export class IncidentDetailComponent implements OnInit {
     return severity.toLowerCase();
   }
 
+  validationClass(validationStatus: IncidentValidationStatus): string {
+    return validationStatus.toLowerCase();
+  }
+
+  isLocked(): boolean {
+    return this.currentIncident?.status === 'RESOLVED';
+  }
+
+  canReopen(): boolean {
+    return this.isLocked() && this.authService.currentUser?.role === 'ADMIN';
+  }
+
   assigneeInitials(assignee: SocUser | null): string {
     if (!assignee) {
       return '';
@@ -118,16 +123,6 @@ export class IncidentDetailComponent implements OnInit {
       .join('');
   }
 
-  filteredAnalysts(): SocUser[] {
-    const query = this.analystSearchTerm.trim().toLowerCase();
-    const eligibleAnalysts = this.analysts.filter((analyst) => analyst.id !== this.authService.currentUser?.id);
-    return query ? eligibleAnalysts.filter((analyst) => analyst.name.toLowerCase().includes(query)) : eligibleAnalysts;
-  }
-
-  selectAnalyst(analystId: string): void {
-    this.selectedAnalystId = analystId;
-  }
-
   claimIncident(): void {
     if (!this.currentIncident || !this.canClaimIncident) {
       return;
@@ -138,29 +133,48 @@ export class IncidentDetailComponent implements OnInit {
     });
   }
 
-  assignIncident(): void {
-    if (!this.currentIncident || !this.isAdmin || !this.selectedAnalystId) {
+  reopenIncident(): void {
+    if (!this.currentIncident || !this.canReopen()) {
       return;
     }
 
-    this.incidentService.assignIncidentToAnalyst(this.currentIncident.id, this.selectedAnalystId).subscribe(() => {
-      const analyst = this.filteredAnalysts().find((candidate) => candidate.id === this.selectedAnalystId);
-      this.notifications.notify(`Incident assigned to ${analyst?.name ?? 'selected analyst'}.`);
+    this.submitting = true;
+    this.incidentService.reopenIncident(this.currentIncident.id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: () => {
+        this.notifications.notify('Incident reopened successfully.');
+        this.submitting = false;
+      },
+      error: () => {
+        this.submitting = false;
+      }
     });
   }
 
   selectStatus(status: IncidentStatus): void {
-    if (!this.isEditable) {
+    if (!this.canManageStatus || this.isLocked()) {
       return;
     }
 
     this.form.controls.status.setValue(status);
+    if (status !== 'RESOLVED') {
+      this.form.controls.validationStatus.setValue('PENDING');
+    }
     this.form.controls.status.markAsDirty();
     this.form.updateValueAndValidity();
   }
 
+  selectValidationStatus(validationStatus: IncidentValidationStatus): void {
+    if (!this.canManageStatus || this.isLocked() || this.form.controls.status.value !== 'RESOLVED') {
+      return;
+    }
+
+    this.form.controls.validationStatus.setValue(validationStatus);
+    this.form.controls.validationStatus.markAsDirty();
+    this.form.updateValueAndValidity();
+  }
+
   submit(): void {
-    if (!this.currentIncident || !this.isEditable) {
+    if (!this.currentIncident || !this.canManageStatus || this.isLocked()) {
       return;
     }
 
@@ -175,6 +189,7 @@ export class IncidentDetailComponent implements OnInit {
       .updateIncidentStatus(this.currentIncident.id, {
         status: rawValue.status,
         severity: rawValue.severity,
+        validationStatus: rawValue.validationStatus,
         resolutionSummary: rawValue.status === 'RESOLVED' ? rawValue.resolutionSummary.trim() : rawValue.resolutionSummary.trim() || undefined
       })
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -190,18 +205,27 @@ export class IncidentDetailComponent implements OnInit {
       });
   }
 
-  private resolutionSummaryRequired(control: AbstractControl): ValidationErrors | null {
+  private workflowValidator(control: AbstractControl): ValidationErrors | null {
     const status = control.get('status')?.value as IncidentStatus | null;
+    const validationStatus = control.get('validationStatus')?.value as IncidentValidationStatus | null;
     const summary = String(control.get('resolutionSummary')?.value ?? '').trim();
+
+    if (status !== 'RESOLVED' && validationStatus !== 'PENDING') {
+      return { validationStatusLocked: true };
+    }
 
     if (status === 'RESOLVED' && !summary) {
       return { resolutionSummaryRequired: true };
     }
 
+    if (status === 'RESOLVED' && validationStatus === 'PENDING') {
+      return { validationStatusRequired: true };
+    }
+
     return null;
-  };
+  }
 
   statusButtonDisabled(status: IncidentStatus): boolean {
-    return !!this.currentIncident && !this.currentIncident.assignedTo && status !== 'NEW';
+    return !this.canManageStatus || this.isLocked();
   }
 }

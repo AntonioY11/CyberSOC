@@ -102,6 +102,8 @@ export function mapIncident(incident: BackendIncident): Incident {
     discoveryDate: incident.discovery_date,
     status: incident.status,
     severity: incident.severity,
+    validationStatus: incident.validation_status,
+    resolvedAt: incident.resolved_at,
     isTruePositive: incident.is_true_positive,
     resolutionSummary: incident.resolution_summary,
     evidenceImage: incident.evidence_image_url ?? incident.evidence_image,

@@ -28,7 +28,7 @@ export const errorInterceptor: HttpInterceptorFn = (request, next) => {
         } else if (error.status >= 500) {
           notifications.notify('The SOC API is temporarily unavailable. Please try again shortly.');
         } else if (error.status !== 0) {
-          notifications.notify(error.error?.detail ?? 'The request could not be completed.');
+          notifications.notify(resolveErrorMessage(error) ?? 'The request could not be completed.');
         }
       }
 
@@ -36,3 +36,29 @@ export const errorInterceptor: HttpInterceptorFn = (request, next) => {
     })
   );
 };
+
+function resolveErrorMessage(error: HttpErrorResponse): string | null {
+  const payload = error.error;
+
+  if (typeof payload === 'string' && payload.trim()) {
+    return payload;
+  }
+
+  if (payload && typeof payload === 'object') {
+    const detail = (payload as { detail?: unknown }).detail;
+    if (typeof detail === 'string' && detail.trim()) {
+      return detail;
+    }
+
+    for (const value of Object.values(payload as Record<string, unknown>)) {
+      if (typeof value === 'string' && value.trim()) {
+        return value;
+      }
+      if (Array.isArray(value) && value.length && typeof value[0] === 'string') {
+        return value[0];
+      }
+    }
+  }
+
+  return null;
+}

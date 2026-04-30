@@ -96,14 +96,27 @@ class Incident(models.Model):
         HIGH = "HIGH", "High"
         CRITICAL = "CRITICAL", "Critical"
 
+    class VALIDATION_STATUS(models.TextChoices):
+        PENDING = "PENDING", "Pending"
+        TRUE_POSITIVE = "TRUE_POSITIVE", "True Positive"
+        FALSE_POSITIVE = "FALSE_POSITIVE", "False Positive"
+        BENIGN_POSITIVE = "BENIGN_POSITIVE", "Benign Positive"
+
     Status = STATUS
     Severity = SEVERITY
+    ValidationStatus = VALIDATION_STATUS
 
     title = models.CharField(max_length=200)
     description = models.TextField()
     discovery_date = models.DateField(default=timezone.now)
     status = models.CharField(max_length=20, choices=STATUS.choices, default=STATUS.NEW)
     severity = models.CharField(max_length=20, choices=SEVERITY.choices, default=SEVERITY.LOW)
+    validation_status = models.CharField(
+        max_length=30,
+        choices=VALIDATION_STATUS.choices,
+        default=VALIDATION_STATUS.PENDING,
+    )
+    resolved_at = models.DateTimeField(null=True, blank=True)
     is_true_positive = models.BooleanField(default=False)
     resolution_summary = models.TextField(blank=True, default="")
     evidence_image = models.ImageField(upload_to="incidents/images/", null=True, blank=True)

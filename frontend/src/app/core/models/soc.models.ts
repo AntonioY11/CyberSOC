@@ -4,6 +4,7 @@ export type ThreatLevel = 'Low' | 'Medium' | 'High' | 'Critical';
 export type ThreatActorStatus = 'UNVERIFIED' | 'VERIFIED';
 export type IncidentStatus = 'NEW' | 'ASSIGNED' | 'MITIGATED' | 'RESOLVED';
 export type IncidentSeverity = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+export type IncidentValidationStatus = 'PENDING' | 'TRUE_POSITIVE' | 'FALSE_POSITIVE' | 'BENIGN_POSITIVE';
 
 export interface SocUser {
   id: string;
@@ -70,6 +71,8 @@ export interface Incident {
   discoveryDate: string;
   status: IncidentStatus;
   severity: IncidentSeverity;
+  validationStatus: IncidentValidationStatus;
+  resolvedAt: string | null;
   isTruePositive: boolean;
   resolutionSummary: string;
   evidenceImage: string | null;
@@ -83,6 +86,7 @@ export interface Incident {
 export interface IncidentStatusUpdateDraft {
   status?: IncidentStatus;
   severity?: IncidentSeverity;
+  validationStatus?: IncidentValidationStatus;
   resolutionSummary?: string;
 }
 
