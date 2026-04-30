@@ -5,6 +5,7 @@ import logging
 import re
 
 from django.contrib.auth.password_validation import validate_password
+from django.core.validators import FileExtensionValidator
 from django.utils.html import strip_tags
 from rest_framework import serializers
 
@@ -317,9 +318,6 @@ class IncidentStatusUpdateSerializer(serializers.Serializer):
     def validate_resolution_note(self, value):
         return value.strip()
 
-    def validate_resolution_note(self, value):
-        return value.strip()
-
     def validate(self, attrs):
         if not attrs:
             raise serializers.ValidationError("Provide a workflow change.")
@@ -345,6 +343,26 @@ class IncidentStatusUpdateSerializer(serializers.Serializer):
             attrs["validation_status"] = Incident.ValidationStatus.PENDING
 
         return attrs
+
+
+class IncidentArtifactUploadSerializer(serializers.Serializer):
+    evidence_image = serializers.ImageField(
+        required=False,
+        validators=[FileExtensionValidator(allowed_extensions=["jpg", "png"])],
+    )
+    forensic_report = serializers.FileField(
+        required=False,
+        validators=[FileExtensionValidator(allowed_extensions=["pdf"])],
+    )
+
+    def validate(self, attrs):
+        if not attrs:
+            raise serializers.ValidationError({"detail": "Provide at least one file to upload."})
+        return attrs
+
+
+class IncidentArtifactClearSerializer(serializers.Serializer):
+    artifact_type = serializers.ChoiceField(choices=["evidence_image", "forensic_report"])
 
 
 class IncidentAssignmentSerializer(serializers.Serializer):

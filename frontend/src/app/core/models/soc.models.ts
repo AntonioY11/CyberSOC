@@ -91,6 +91,13 @@ export interface IncidentStatusUpdateDraft {
   resolutionSummary?: string;
 }
 
+export interface IncidentArtifactUploadDraft {
+  evidenceImage?: File | null;
+  forensicReport?: File | null;
+}
+
+export type IncidentArtifactType = 'evidence_image' | 'forensic_report';
+
 export interface IncidentDraft {
   title: string;
   description: string;

@@ -30,4 +30,7 @@ class IncidentAccessPermission(BasePermission):
         if view.action in {"update", "partial_update", "update_status"}:
             return obj.assigned_to_id == request.user.id
 
+        if view.action in {"upload_artifacts", "remove_artifact"}:
+            return request.user.role == "ADMIN" or obj.assigned_to_id == request.user.id
+
         return True

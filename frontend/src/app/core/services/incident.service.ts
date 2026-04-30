@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable, catchError, map, of, tap } from 'rxjs';
 import { BackendIncident } from '../models/backend.models';
-import { Incident, IncidentDraft, IncidentStatusUpdateDraft } from '../models/soc.models';
+import { Incident, IncidentArtifactType, IncidentArtifactUploadDraft, IncidentDraft, IncidentStatusUpdateDraft } from '../models/soc.models';
 import { CyberService } from './cyber.service';
 import { mapIncident } from './mappers';
 
@@ -60,6 +60,30 @@ export class IncidentService {
     };
 
     return this.cyber.patch<BackendIncident>(`/incidents/${incidentId}/update-status/`, payload).pipe(
+      map(mapIncident),
+      tap((incident) => this.replaceIncident(incident))
+    );
+  }
+
+  uploadIncidentArtifacts(incidentId: string, draft: IncidentArtifactUploadDraft): Observable<Incident> {
+    const formData = new FormData();
+
+    if (draft.evidenceImage) {
+      formData.append('evidence_image', draft.evidenceImage);
+    }
+
+    if (draft.forensicReport) {
+      formData.append('forensic_report', draft.forensicReport);
+    }
+
+    return this.cyber.post<BackendIncident>(`/incidents/${incidentId}/upload-artifacts/`, formData).pipe(
+      map(mapIncident),
+      tap((incident) => this.replaceIncident(incident))
+    );
+  }
+
+  removeIncidentArtifact(incidentId: string, artifactType: IncidentArtifactType): Observable<Incident> {
+    return this.cyber.post<BackendIncident>(`/incidents/${incidentId}/remove-artifact/`, { artifact_type: artifactType }).pipe(
       map(mapIncident),
       tap((incident) => this.replaceIncident(incident))
     );

@@ -126,16 +126,42 @@
           <h2>Evidence gallery</h2>
           <p>Image evidence and forensic PDF report.</p>
         </div>
+        @if (canUploadFiles) {
+          <div class="artifact-actions">
+            <label class="button ghost small upload-button" [class.disabled]="uploadingEvidence">
+              <span aria-hidden="true">⤴</span>
+              <span>{{ uploadingEvidence ? 'Uploading image...' : 'Upload image' }}</span>
+              <input type="file" accept=".jpg,.png" (change)="uploadEvidenceImage($event)">
+            </label>
+            <label class="button ghost small upload-button" [class.disabled]="uploadingReport">
+              <span aria-hidden="true">⤴</span>
+              <span>{{ uploadingReport ? 'Uploading PDF...' : 'Upload PDF' }}</span>
+              <input type="file" accept=".pdf" (change)="uploadForensicReport($event)">
+            </label>
+          </div>
+        }
       </div>
 
       @if (incident.evidenceImage) {
         <img class="evidence-image" [src]="incident.evidenceImage" [alt]="'Evidence image for ' + incident.title">
+        @if (canUploadFiles) {
+          <button class="button ghost small" type="button" (click)="deleteEvidenceImage()" [disabled]="deletingEvidence || uploadingEvidence">
+            {{ deletingEvidence ? 'Removing...' : 'Delete image' }}
+          </button>
+        }
       } @else {
         <div class="empty-preview">No image evidence uploaded.</div>
       }
 
       @if (incident.forensicReport) {
-        <a class="button primary" [href]="incident.forensicReport" download>Download PDF</a>
+        <div class="artifact-inline-row">
+          <a class="button primary" [href]="incident.forensicReport" download>Download PDF</a>
+          @if (canUploadFiles) {
+            <button class="button ghost small" type="button" (click)="deleteForensicReport()" [disabled]="deletingReport || uploadingReport">
+              {{ deletingReport ? 'Removing...' : 'Delete PDF' }}
+            </button>
+          }
+        </div>
       } @else {
         <button class="button primary" type="button" disabled>PDF unavailable</button>
       }

@@ -1,9 +1,24 @@
 from __future__ import annotations
 
+import os
+from uuid import uuid4
+
 from django.contrib.auth.models import AbstractUser
 from django.core.validators import FileExtensionValidator, MaxValueValidator, MinValueValidator, RegexValidator
 from django.db import models
 from django.utils import timezone
+
+
+def incident_evidence_upload_to(instance, filename: str) -> str:
+    extension = os.path.splitext(filename)[1].lower()
+    incident_id = instance.pk or "new"
+    return f"incidents/images/incident_{incident_id}_evidence_{uuid4().hex}{extension}"
+
+
+def incident_report_upload_to(instance, filename: str) -> str:
+    extension = os.path.splitext(filename)[1].lower()
+    incident_id = instance.pk or "new"
+    return f"incidents/reports/incident_{incident_id}_report_{uuid4().hex}{extension}"
 
 
 class User(AbstractUser):
@@ -120,9 +135,14 @@ class Incident(models.Model):
     is_deleted = models.BooleanField(default=False)
     is_true_positive = models.BooleanField(default=False)
     resolution_summary = models.TextField(blank=True, default="")
-    evidence_image = models.ImageField(upload_to="incidents/images/", null=True, blank=True)
+    evidence_image = models.ImageField(
+        upload_to=incident_evidence_upload_to,
+        null=True,
+        blank=True,
+        validators=[FileExtensionValidator(allowed_extensions=["jpg", "png"])],
+    )
     forensic_report = models.FileField(
-        upload_to="incidents/reports/",
+        upload_to=incident_report_upload_to,
         null=True,
         blank=True,
         validators=[FileExtensionValidator(allowed_extensions=["pdf"])],

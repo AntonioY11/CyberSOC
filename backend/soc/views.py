@@ -21,6 +21,8 @@ from soc.permissions import IncidentAccessPermission, IsAdminForSystemWrite
 from soc.serializers import (
     AuditLogSerializer,
     ChangePasswordSerializer,
+    IncidentArtifactClearSerializer,
+    IncidentArtifactUploadSerializer,
     InviteUserResponseSerializer,
     InviteUserSerializer,
     IncidentLogSerializer,
@@ -413,6 +415,99 @@ class IncidentViewSet(ModelViewSet):
 
         for field_name, old_value, new_value in updated_fields:
             log_incident_field_change(request.user, incident, field_name, old_value, new_value)
+
+        return Response(self.build_incident_payload(incident, request))
+
+    @action(detail=True, methods=["post"], url_path="upload-artifacts", parser_classes=[MultiPartParser, FormParser, JSONParser])
+    def upload_artifacts(self, request, pk=None):
+        incident = self.get_object()
+        frozen_response = self._reject_if_frozen(incident)
+        if frozen_response:
+            return frozen_response
+
+        if request.user.role != User.Role.ADMIN and incident.assigned_to_id != request.user.id:
+            return Response(
+                {"detail": "Only the assigned analyst or an admin can upload incident files."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        serializer = IncidentArtifactUploadSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        old_evidence_name = incident.evidence_image.name if incident.evidence_image else None
+        old_report_name = incident.forensic_report.name if incident.forensic_report else None
+
+        if "evidence_image" in serializer.validated_data:
+            incident.evidence_image = serializer.validated_data["evidence_image"]
+        if "forensic_report" in serializer.validated_data:
+            incident.forensic_report = serializer.validated_data["forensic_report"]
+
+        incident.save()
+
+        if old_evidence_name and old_evidence_name != incident.evidence_image.name:
+            try:
+                incident.evidence_image.storage.delete(old_evidence_name)
+            except Exception:
+                logger.exception("Failed to remove previous evidence image for incident %s", incident.id)
+
+        if old_report_name and old_report_name != incident.forensic_report.name:
+            try:
+                incident.forensic_report.storage.delete(old_report_name)
+            except Exception:
+                logger.exception("Failed to remove previous forensic report for incident %s", incident.id)
+
+        create_audit_log(
+            request.user,
+            "INCIDENT_ARTIFACTS_UPDATED",
+            f"Incident #{incident.id} artifacts updated: {', '.join(serializer.validated_data.keys())}",
+        )
+
+        return Response(self.build_incident_payload(incident, request))
+
+    @action(detail=True, methods=["post"], url_path="remove-artifact", parser_classes=[MultiPartParser, FormParser, JSONParser])
+    def remove_artifact(self, request, pk=None):
+        incident = self.get_object()
+        frozen_response = self._reject_if_frozen(incident)
+        if frozen_response:
+            return frozen_response
+
+        if request.user.role != User.Role.ADMIN and incident.assigned_to_id != request.user.id:
+            return Response(
+                {"detail": "Only the assigned analyst or an admin can remove incident files."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        serializer = IncidentArtifactClearSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        artifact_type = serializer.validated_data["artifact_type"]
+        old_name = None
+
+        if artifact_type == "evidence_image":
+            if not incident.evidence_image:
+                return Response({"detail": "No evidence image is attached."}, status=status.HTTP_400_BAD_REQUEST)
+            old_name = incident.evidence_image.name
+            storage = incident.evidence_image.storage
+            incident.evidence_image = None
+        else:
+            if not incident.forensic_report:
+                return Response({"detail": "No forensic report is attached."}, status=status.HTTP_400_BAD_REQUEST)
+            old_name = incident.forensic_report.name
+            storage = incident.forensic_report.storage
+            incident.forensic_report = None
+
+        incident.save()
+
+        try:
+            storage.delete(old_name)
+        except Exception:
+            logger.exception("Failed to remove %s for incident %s", artifact_type, incident.id)
+
+        create_audit_log(
+            request.user,
+            "INCIDENT_ARTIFACT_REMOVED",
+            f"Incident #{incident.id} removed {artifact_type}",
+        )
 
         return Response(self.build_incident_payload(incident, request))
 

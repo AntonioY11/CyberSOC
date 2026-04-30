@@ -374,6 +374,39 @@ td span,
   margin: 4px 0 0;
 }
 
+.artifact-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.artifact-inline-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.upload-button {
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.upload-button input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.upload-button.disabled {
+  pointer-events: none;
+  opacity: 0.6;
+}
+
 .filter-row,
 .tab-row,
 .field-row {
@@ -685,6 +718,12 @@ td span {
   border: 1px solid var(--line);
   border-radius: 8px;
   background: rgba(2, 6, 23, 0.5);
+}
+
+.evidence-image + .button,
+.empty-preview + .button,
+.evidence-image + .button + .button {
+  margin-top: -2px;
 }
 
 .empty-preview {

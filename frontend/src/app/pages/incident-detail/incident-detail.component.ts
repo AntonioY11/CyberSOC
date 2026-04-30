@@ -3,8 +3,10 @@ import { Component, DestroyRef, OnInit, inject } from '@angular/core';
 import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { combineLatest, map } from 'rxjs';
+import { combineLatest, finalize, map } from 'rxjs';
 import {
+  IncidentArtifactType,
+  IncidentArtifactUploadDraft,
   Incident,
   IncidentLog,
   IncidentSeverity,
@@ -52,7 +54,12 @@ export class IncidentDetailComponent implements OnInit {
   canClaimIncident = false;
   canManageStatus = false;
   canDeleteIncident = false;
+  canUploadFiles = false;
   pendingDeleteIncident = false;
+  uploadingEvidence = false;
+  uploadingReport = false;
+  deletingEvidence = false;
+  deletingReport = false;
   submitting = false;
 
   ngOnInit(): void {
@@ -66,14 +73,18 @@ export class IncidentDetailComponent implements OnInit {
           this.canClaimIncident = false;
           this.canManageStatus = false;
           this.canDeleteIncident = false;
+          this.canUploadFiles = false;
           this.pendingDeleteIncident = false;
           return;
         }
 
         const incidentChanged = this.currentIncident?.id !== incident.id;
         this.currentIncident = incident;
-        this.canManageStatus = incident.assignedTo?.id === user?.id;
+        const isAdmin = user?.role === 'ADMIN';
+        const isOwner = incident.assignedTo?.id === user?.id;
+        this.canManageStatus = isOwner;
         this.canDeleteIncident = user?.role === 'ADMIN';
+        this.canUploadFiles = !this.isLocked() && (isAdmin || isOwner);
         this.canClaimIncident = incident.status === 'NEW' && !incident.assignedTo && !!user;
 
         if (!incidentChanged && this.form.dirty) {
@@ -198,6 +209,38 @@ export class IncidentDetailComponent implements OnInit {
     });
   }
 
+  uploadEvidenceImage(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.item(0);
+    input.value = '';
+
+    if (!file) {
+      return;
+    }
+
+    this.uploadIncidentArtifact({ evidenceImage: file }, 'uploadingEvidence', 'Evidence image updated.');
+  }
+
+  uploadForensicReport(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.item(0);
+    input.value = '';
+
+    if (!file) {
+      return;
+    }
+
+    this.uploadIncidentArtifact({ forensicReport: file }, 'uploadingReport', 'Forensic report updated.');
+  }
+
+  deleteEvidenceImage(): void {
+    this.removeIncidentArtifact('evidence_image', 'deletingEvidence', 'Evidence image removed.');
+  }
+
+  deleteForensicReport(): void {
+    this.removeIncidentArtifact('forensic_report', 'deletingReport', 'Forensic report removed.');
+  }
+
   selectStatus(status: IncidentStatus): void {
     if (!this.canManageStatus || this.isLocked()) {
       return;
@@ -275,5 +318,61 @@ export class IncidentDetailComponent implements OnInit {
 
   statusButtonDisabled(status: IncidentStatus): boolean {
     return !this.canManageStatus || this.isLocked();
+  }
+
+  private uploadIncidentArtifact(
+    draft: IncidentArtifactUploadDraft,
+    stateKey: 'uploadingEvidence' | 'uploadingReport',
+    successMessage: string
+  ): void {
+    if (!this.currentIncident || !this.canUploadFiles || this.isLocked()) {
+      return;
+    }
+
+    this[stateKey] = true;
+    this.incidentService
+      .uploadIncidentArtifacts(this.currentIncident.id, draft)
+      .pipe(
+        takeUntilDestroyed(this.destroyRef),
+        finalize(() => {
+          this[stateKey] = false;
+        })
+      )
+      .subscribe({
+        next: () => {
+          this.notifications.notify(successMessage);
+        },
+        error: () => {
+          return;
+        }
+      });
+  }
+
+  private removeIncidentArtifact(
+    artifactType: IncidentArtifactType,
+    stateKey: 'deletingEvidence' | 'deletingReport',
+    successMessage: string
+  ): void {
+    if (!this.currentIncident || !this.canUploadFiles || this.isLocked()) {
+      return;
+    }
+
+    this[stateKey] = true;
+    this.incidentService
+      .removeIncidentArtifact(this.currentIncident.id, artifactType)
+      .pipe(
+        takeUntilDestroyed(this.destroyRef),
+        finalize(() => {
+          this[stateKey] = false;
+        })
+      )
+      .subscribe({
+        next: () => {
+          this.notifications.notify(successMessage);
+        },
+        error: () => {
+          return;
+        }
+      });
   }
 }
