@@ -61,6 +61,10 @@ export class IncidentDetailComponent implements OnInit {
   deletingEvidence = false;
   deletingReport = false;
   submitting = false;
+  private evidenceImagePreviewUrl: string | null = null;
+  private forensicReportPreviewUrl: string | null = null;
+  private evidenceImageHidden = false;
+  private forensicReportHidden = false;
 
   ngOnInit(): void {
     this.incidentService.loadIncidents().subscribe();
@@ -75,6 +79,7 @@ export class IncidentDetailComponent implements OnInit {
           this.canDeleteIncident = false;
           this.canUploadFiles = false;
           this.pendingDeleteIncident = false;
+          this.resetArtifactPreviews();
           return;
         }
 
@@ -116,6 +121,22 @@ export class IncidentDetailComponent implements OnInit {
         this.form.markAsPristine();
         this.form.markAsUntouched();
       });
+  }
+
+  get displayedEvidenceImage(): string | null {
+    if (this.evidenceImageHidden) {
+      return null;
+    }
+
+    return this.evidenceImagePreviewUrl ?? this.currentIncident?.evidenceImage ?? null;
+  }
+
+  get displayedForensicReport(): string | null {
+    if (this.forensicReportHidden) {
+      return null;
+    }
+
+    return this.forensicReportPreviewUrl ?? this.currentIncident?.forensicReport ?? null;
   }
 
   sortedLogs(logs: IncidentLog[]): IncidentLog[] {
@@ -218,7 +239,13 @@ export class IncidentDetailComponent implements OnInit {
       return;
     }
 
-    this.uploadIncidentArtifact({ evidenceImage: file }, 'uploadingEvidence', 'Evidence image updated.');
+    this.setEvidenceImagePreview(file);
+    this.evidenceImageHidden = false;
+    this.uploadIncidentArtifact({ evidenceImage: file }, 'uploadingEvidence', 'Evidence image updated.', () => {
+      this.clearEvidenceImagePreview();
+    }, () => {
+      this.clearEvidenceImagePreview();
+    });
   }
 
   uploadForensicReport(event: Event): void {
@@ -230,15 +257,29 @@ export class IncidentDetailComponent implements OnInit {
       return;
     }
 
-    this.uploadIncidentArtifact({ forensicReport: file }, 'uploadingReport', 'Forensic report updated.');
+    this.setForensicReportPreview(file);
+    this.forensicReportHidden = false;
+    this.uploadIncidentArtifact({ forensicReport: file }, 'uploadingReport', 'Forensic report updated.', () => {
+      this.clearForensicReportPreview();
+    }, () => {
+      this.clearForensicReportPreview();
+    });
   }
 
   deleteEvidenceImage(): void {
-    this.removeIncidentArtifact('evidence_image', 'deletingEvidence', 'Evidence image removed.');
+    this.evidenceImageHidden = true;
+    this.clearEvidenceImagePreview();
+    this.removeIncidentArtifact('evidence_image', 'deletingEvidence', 'Evidence image removed.', () => {
+      this.evidenceImageHidden = false;
+    });
   }
 
   deleteForensicReport(): void {
-    this.removeIncidentArtifact('forensic_report', 'deletingReport', 'Forensic report removed.');
+    this.forensicReportHidden = true;
+    this.clearForensicReportPreview();
+    this.removeIncidentArtifact('forensic_report', 'deletingReport', 'Forensic report removed.', () => {
+      this.forensicReportHidden = false;
+    });
   }
 
   selectStatus(status: IncidentStatus): void {
@@ -323,7 +364,9 @@ export class IncidentDetailComponent implements OnInit {
   private uploadIncidentArtifact(
     draft: IncidentArtifactUploadDraft,
     stateKey: 'uploadingEvidence' | 'uploadingReport',
-    successMessage: string
+    successMessage: string,
+    onSuccess?: () => void,
+    onError?: () => void
   ): void {
     if (!this.currentIncident || !this.canUploadFiles || this.isLocked()) {
       return;
@@ -340,9 +383,11 @@ export class IncidentDetailComponent implements OnInit {
       )
       .subscribe({
         next: () => {
+          onSuccess?.();
           this.notifications.notify(successMessage);
         },
         error: () => {
+          onError?.();
           return;
         }
       });
@@ -351,7 +396,8 @@ export class IncidentDetailComponent implements OnInit {
   private removeIncidentArtifact(
     artifactType: IncidentArtifactType,
     stateKey: 'deletingEvidence' | 'deletingReport',
-    successMessage: string
+    successMessage: string,
+    onError?: () => void
   ): void {
     if (!this.currentIncident || !this.canUploadFiles || this.isLocked()) {
       return;
@@ -371,8 +417,40 @@ export class IncidentDetailComponent implements OnInit {
           this.notifications.notify(successMessage);
         },
         error: () => {
+          onError?.();
           return;
         }
       });
+  }
+
+  private setEvidenceImagePreview(file: File): void {
+    this.clearEvidenceImagePreview();
+    this.evidenceImagePreviewUrl = URL.createObjectURL(file);
+  }
+
+  private setForensicReportPreview(file: File): void {
+    this.clearForensicReportPreview();
+    this.forensicReportPreviewUrl = URL.createObjectURL(file);
+  }
+
+  private clearEvidenceImagePreview(): void {
+    if (this.evidenceImagePreviewUrl) {
+      URL.revokeObjectURL(this.evidenceImagePreviewUrl);
+      this.evidenceImagePreviewUrl = null;
+    }
+  }
+
+  private clearForensicReportPreview(): void {
+    if (this.forensicReportPreviewUrl) {
+      URL.revokeObjectURL(this.forensicReportPreviewUrl);
+      this.forensicReportPreviewUrl = null;
+    }
+  }
+
+  private resetArtifactPreviews(): void {
+    this.evidenceImageHidden = false;
+    this.forensicReportHidden = false;
+    this.clearEvidenceImagePreview();
+    this.clearForensicReportPreview();
   }
 }

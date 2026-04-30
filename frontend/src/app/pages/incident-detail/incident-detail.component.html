@@ -142,8 +142,8 @@
         }
       </div>
 
-      @if (incident.evidenceImage) {
-        <img class="evidence-image" [src]="incident.evidenceImage" [alt]="'Evidence image for ' + incident.title">
+      @if (displayedEvidenceImage) {
+        <img class="evidence-image" [src]="displayedEvidenceImage" [alt]="'Evidence image for ' + incident.title">
         @if (canUploadFiles) {
           <button class="button ghost small" type="button" (click)="deleteEvidenceImage()" [disabled]="deletingEvidence || uploadingEvidence">
             {{ deletingEvidence ? 'Removing...' : 'Delete image' }}
@@ -153,9 +153,9 @@
         <div class="empty-preview">No image evidence uploaded.</div>
       }
 
-      @if (incident.forensicReport) {
+      @if (displayedForensicReport) {
         <div class="artifact-inline-row">
-          <a class="button primary" [href]="incident.forensicReport" download>Download PDF</a>
+          <a class="button primary" [href]="displayedForensicReport" download>Download PDF</a>
           @if (canUploadFiles) {
             <button class="button ghost small" type="button" (click)="deleteForensicReport()" [disabled]="deletingReport || uploadingReport">
               {{ deletingReport ? 'Removing...' : 'Delete PDF' }}
