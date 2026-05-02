@@ -152,7 +152,13 @@ class UserViewSet(ModelViewSet):
     queryset = User.objects.all().order_by("id")
     serializer_class = UserSerializer
     permission_classes = [IsAdminUser]
-    filterset_fields = ["role", "is_staff", "is_active"]
+    filterset_fields = ["role", "is_staff"]
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        users = [user for user in queryset if user.is_active]
+        serializer = self.get_serializer(users, many=True)
+        return Response(serializer.data)
 
     def destroy(self, request, *args, **kwargs):
         user = self.get_object()
@@ -165,8 +171,27 @@ class UserViewSet(ModelViewSet):
 
     def perform_destroy(self, instance):
         target_identifier = instance.email
-        instance.delete()
-        create_audit_log(self.request.user, "USER_DELETED", target_identifier)
+        active_incidents = list(
+            Incident.objects.filter(assigned_to=instance).exclude(status=Incident.Status.RESOLVED)
+        )
+
+        if active_incidents:
+            Incident.objects.filter(pk__in=[incident.pk for incident in active_incidents]).update(
+                assigned_to=None,
+                status=Incident.Status.NEW,
+            )
+            for incident in active_incidents:
+                IncidentLog.objects.create(
+                    incident=incident,
+                    action="Incident Unassigned",
+                    message="Incident automatically unassigned due to analyst deactivation",
+                    performed_by=incident_actor_name(self.request.user),
+                )
+
+        if instance.is_active:
+            instance.is_active = False
+            instance.save(update_fields=["is_active"])
+        create_audit_log(self.request.user, "USER_DEACTIVATED", target_identifier)
 
 
 class AdminUserViewSet(UserViewSet):
@@ -176,7 +201,7 @@ class AdminUserViewSet(UserViewSet):
         return (
             super()
             .get_queryset()
-            .filter(role=User.Role.ANALYST, is_active=True)
+            .filter(role=User.Role.ANALYST)
             .exclude(pk=self.request.user.pk)
             .order_by("name")
         )
