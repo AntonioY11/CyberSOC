@@ -29,6 +29,19 @@ export class AuthService {
     );
   }
 
+  refreshAccessToken(): Observable<string> {
+    const refreshToken = this.sessionSubject.value?.refreshToken;
+
+    if (!refreshToken) {
+      throw new Error('Missing refresh token.');
+    }
+
+    return this.cyber.post<{ access: string }>('/token/refresh/', { refresh: refreshToken }).pipe(
+      map((response) => response.access),
+      tap((accessToken) => this.updateAccessToken(accessToken))
+    );
+  }
+
   logout(): void {
     localStorage.removeItem(this.storageKey);
     this.sessionSubject.next(null);
@@ -42,6 +55,22 @@ export class AuthService {
   private setSession(session: AuthSession): void {
     localStorage.setItem(this.storageKey, JSON.stringify(session));
     this.sessionSubject.next(session);
+  }
+
+  private updateAccessToken(accessToken: string): void {
+    const session = this.sessionSubject.value;
+
+    if (!session) {
+      return;
+    }
+
+    const updatedSession = {
+      ...session,
+      accessToken
+    };
+
+    localStorage.setItem(this.storageKey, JSON.stringify(updatedSession));
+    this.sessionSubject.next(updatedSession);
   }
 
   private readSession(): AuthSession | null {
