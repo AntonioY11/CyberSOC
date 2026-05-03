@@ -178,6 +178,45 @@
     </section>
   }
 
+  @if (canDispatchIncident) {
+    <section class="panel">
+      <div class="panel-title">
+        <div>
+          <h2>Dispatch to analyst</h2>
+          <p>Admins can assign a new incident directly to an analyst instead of claiming it themselves.</p>
+        </div>
+      </div>
+
+      <div class="field-row">
+        <label class="field">
+          <span>Select analyst</span>
+          <select [(ngModel)]="selectedAnalystId" name="selectedAnalystId">
+            <option value="">Choose an analyst</option>
+            @if (analysts$ | async; as analysts) {
+              @for (analyst of analysts; track analyst.id) {
+                <option [value]="analyst.id">{{ analyst.name }} ({{ analyst.email }})</option>
+              }
+            }
+          </select>
+        </label>
+
+        <div class="field">
+          <span>Current assignment</span>
+          <span>{{ incident.assignedTo ? incident.assignedTo.name : 'Unassigned' }}</span>
+        </div>
+      </div>
+
+      <button
+        class="button primary"
+        type="button"
+        [disabled]="dispatchingIncident || !selectedAnalystId"
+        (click)="dispatchIncident()"
+      >
+        {{ dispatchingIncident ? 'Dispatching...' : 'Assign to analyst' }}
+      </button>
+    </section>
+  }
+
   @if (canManageStatus || isLocked()) {
     <section class="panel">
       <div class="panel-title">

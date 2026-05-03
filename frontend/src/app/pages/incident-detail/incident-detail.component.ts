@@ -1,6 +1,7 @@
 import { AsyncPipe, DatePipe, NgClass } from '@angular/common';
 import { Component, DestroyRef, OnInit, inject } from '@angular/core';
 import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
+import { FormsModule } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { combineLatest, finalize, map } from 'rxjs';
@@ -17,10 +18,11 @@ import {
 import { AuthService } from '../../core/services/auth.service';
 import { IncidentService } from '../../core/services/incident.service';
 import { NotificationService } from '../../core/services/notification.service';
+import { UserService } from '../../core/services/user.service';
 
 @Component({
   selector: 'app-incident-detail',
-  imports: [AsyncPipe, DatePipe, NgClass, ReactiveFormsModule, RouterLink],
+  imports: [AsyncPipe, DatePipe, FormsModule, NgClass, ReactiveFormsModule, RouterLink],
   templateUrl: './incident-detail.component.html'
 })
 export class IncidentDetailComponent implements OnInit {
@@ -29,10 +31,12 @@ export class IncidentDetailComponent implements OnInit {
   private readonly incidentService = inject(IncidentService);
   private readonly authService = inject(AuthService);
   private readonly notifications = inject(NotificationService);
+  private readonly userService = inject(UserService);
   private readonly formBuilder = inject(FormBuilder);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly user$ = this.authService.user$;
+  readonly analysts$ = this.userService.loadAdminAnalysts();
   readonly incident$ = combineLatest([this.route.paramMap, this.incidentService.incidents$]).pipe(
     map(([params, incidents]) => incidents.find((incident) => incident.id === params.get('id')))
   );
@@ -55,7 +59,10 @@ export class IncidentDetailComponent implements OnInit {
   canManageStatus = false;
   canDeleteIncident = false;
   canUploadFiles = false;
+  canDispatchIncident = false;
   pendingDeleteIncident = false;
+  dispatchingIncident = false;
+  selectedAnalystId = '';
   uploadingEvidence = false;
   uploadingReport = false;
   deletingEvidence = false;
@@ -78,7 +85,10 @@ export class IncidentDetailComponent implements OnInit {
           this.canManageStatus = false;
           this.canDeleteIncident = false;
           this.canUploadFiles = false;
+          this.canDispatchIncident = false;
           this.pendingDeleteIncident = false;
+          this.dispatchingIncident = false;
+          this.selectedAnalystId = '';
           this.resetArtifactPreviews();
           return;
         }
@@ -91,6 +101,11 @@ export class IncidentDetailComponent implements OnInit {
         this.canDeleteIncident = user?.role === 'ADMIN';
         this.canUploadFiles = !this.isLocked() && (isAdmin || isOwner);
         this.canClaimIncident = incident.status === 'NEW' && !incident.assignedTo && !!user;
+        this.canDispatchIncident = isAdmin && incident.status === 'NEW' && !incident.assignedTo;
+
+        if (!this.canDispatchIncident) {
+          this.selectedAnalystId = '';
+        }
 
         if (!incidentChanged && this.form.dirty) {
           if (this.canManageStatus && !this.isLocked()) {
@@ -180,6 +195,27 @@ export class IncidentDetailComponent implements OnInit {
     this.incidentService.claimIncident(this.currentIncident.id).subscribe(() => {
       this.notifications.notify('Incident claimed successfully.');
     });
+  }
+
+  dispatchIncident(): void {
+    if (!this.currentIncident || !this.canDispatchIncident || !this.selectedAnalystId) {
+      return;
+    }
+
+    this.dispatchingIncident = true;
+    this.incidentService
+      .assignIncidentToAnalyst(this.currentIncident.id, this.selectedAnalystId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.notifications.notify('Incident assigned to analyst successfully.');
+          this.dispatchingIncident = false;
+          this.selectedAnalystId = '';
+        },
+        error: () => {
+          this.dispatchingIncident = false;
+        }
+      });
   }
 
   reopenIncident(): void {
